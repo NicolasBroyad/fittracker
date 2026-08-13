@@ -1,0 +1,33 @@
+import { sb } from './config.js';
+import { SEED_ENTRIES } from './seed-data.js';
+import { setEntries } from './state.js';
+import { showToast } from './utils.js';
+
+export async function loadEntries(){
+  const { data, error } = await sb.from('weight_entries').select('date,weight,note');
+  if(error){ console.error(error); showToast('Error cargando datos'); setEntries({}); return; }
+
+  if(data.length === 0){
+    // primera vez: sembrar con el historial importado del excel
+    const rows = Object.keys(SEED_ENTRIES).map(date => ({ date, weight: SEED_ENTRIES[date], note: '' }));
+    const { error: seedError } = await sb.from('weight_entries').insert(rows);
+    if(seedError){ console.error(seedError); showToast('Error cargando datos iniciales'); }
+    const { data: seeded } = await sb.from('weight_entries').select('date,weight,note');
+    const result = {};
+    (seeded || []).forEach(r => { result[r.date] = { weight: Number(r.weight), note: r.note || '' }; });
+    setEntries(result);
+    return;
+  }
+
+  const result = {};
+  data.forEach(r => { result[r.date] = { weight: Number(r.weight), note: r.note || '' }; });
+  setEntries(result);
+}
+
+export async function upsertEntry(date, weight, note){
+  return sb.from('weight_entries').upsert({ date, weight, note }, { onConflict: 'user_id,date' });
+}
+
+export async function deleteEntryByDate(date){
+  return sb.from('weight_entries').delete().eq('date', date);
+}

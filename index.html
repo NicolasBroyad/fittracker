@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Registro de Peso</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <h1>Registro de Peso</h1>
+    <div class="sub">Ingresá con tu cuenta para ver tus datos.</div>
+    <form id="login-form">
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-password">Contraseña</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <div class="login-error" id="login-error"></div>
+      <button type="submit" class="btn btn-save" id="login-submit" style="width:100%;">Ingresar</button>
+    </form>
+  </div>
+</div>
+
+<div class="app hidden" id="app-root">
+
+  <div class="topbar">
+    <div>
+      <div class="eyebrow">Peso en ayunas · cada mañana</div>
+      <h1>Registro de Peso</h1>
+      <div class="sub" id="today-label"></div>
+      <div><button class="btn-logout" id="btn-logout">Cerrar sesión</button></div>
+    </div>
+    <button class="btn-primary" id="btn-log-today">＋ Cargar peso de hoy</button>
+  </div>
+
+  <div class="stats-row">
+    <div class="card card-lcd">
+      <div class="label">Peso actual</div>
+      <div class="value" id="stat-current">— <span class="unit">kg</span></div>
+      <div class="date-note" id="stat-current-date">sin registros</div>
+    </div>
+    <div class="card card-trend">
+      <div class="label">Tendencia</div>
+      <div class="value" id="stat-trend">—</div>
+      <div class="sub" id="stat-trend-sub">datos insuficientes</div>
+    </div>
+    <div class="card card-streak">
+      <div class="label">Racha</div>
+      <div class="value" id="stat-streak">0<span class="unit">días</span></div>
+      <div class="sub" id="stat-streak-sub">sin registros</div>
+      <div class="streak-ticks" id="stat-streak-ticks"></div>
+    </div>
+    <div class="card card-minmax">
+      <div class="label">Histórico</div>
+      <div class="row"><span class="tag">Máx</span><span class="val" id="stat-max">—</span></div>
+      <div class="row"><span class="tag">Mín</span><span class="val" id="stat-min">—</span></div>
+    </div>
+  </div>
+
+  <div class="panels">
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Calendario</h2>
+        <div class="cal-nav">
+          <button id="cal-prev">‹</button>
+          <div class="cal-month-label" id="cal-month-label"></div>
+          <button id="cal-next">›</button>
+        </div>
+      </div>
+      <div class="cal-grid" id="cal-dow-row"></div>
+      <div class="cal-grid" id="cal-grid" style="margin-top:4px;"></div>
+      <div class="cal-legend">
+        <div class="k"><span class="dot" style="background:var(--accent)"></span>registrado</div>
+        <div class="k"><span class="dot" style="background:var(--brass)"></span>con nota</div>
+        <div class="k"><span class="dot" style="border:1px solid var(--brass); background:transparent; box-sizing:border-box;"></span>hoy</div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-head">
+        <h2>Evolución</h2>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="tabs">
+            <button id="tab-weekly" class="active">Semanal</button>
+            <button id="tab-daily">Diario</button>
+          </div>
+          <button class="btn-expand" id="btn-chart-expand" title="Ampliar">⤢</button>
+        </div>
+      </div>
+      <div class="chart-scroll"><div id="chart-container"></div></div>
+      <div class="chart-legend" id="chart-legend"></div>
+    </div>
+  </div>
+
+  <div class="panel notes-panel">
+    <div class="panel-head"><h2>Notas recientes</h2></div>
+    <div id="notes-list"></div>
+  </div>
+
+  <div class="panel records-panel">
+    <div class="panel-head">
+      <h2>Registros</h2>
+      <div class="sub" id="records-count"></div>
+    </div>
+    <div class="records-list" id="records-list"></div>
+  </div>
+
+</div>
+
+<div class="modal-overlay hidden" id="modal-overlay">
+  <div class="modal">
+    <h3>Registrar peso</h3>
+    <div class="modal-date" id="modal-date"></div>
+    <div class="field">
+      <label for="input-weight">Peso (kg)</label>
+      <input type="number" id="input-weight" step="0.05" inputmode="decimal" placeholder="72.50">
+    </div>
+    <div class="field">
+      <label for="input-note">Nota (opcional)</label>
+      <textarea id="input-note" placeholder="comida, entreno, cómo te sentiste..."></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-delete hidden" id="btn-delete">Borrar</button>
+      <button class="btn btn-cancel" id="btn-cancel">Cancelar</button>
+      <button class="btn btn-save" id="btn-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="chart-modal-overlay">
+  <div class="chart-modal">
+    <div class="chart-modal-head">
+      <h2>Evolución</h2>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div class="tabs">
+          <button id="tab-weekly-big" class="active">Semanal</button>
+          <button id="tab-daily-big">Diario</button>
+        </div>
+        <button class="chart-modal-close" id="chart-modal-close" title="Cerrar">✕</button>
+      </div>
+    </div>
+    <div class="chart-scroll"><div id="chart-container-big"></div></div>
+    <div class="chart-legend" id="chart-legend-big"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
