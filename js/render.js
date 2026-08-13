@@ -1,9 +1,9 @@
-import { entries, viewMonth } from './state.js';
-import { MONTHS, DOW, fromISO, toISO, todayISO, fmtShort, escapeHtml } from './utils.js';
-import { computeCurrent, computeTrend, computeStreak, computeMinMax, sortedDates } from './derived.js';
+import { entries, viewMonth, setCurrentGoal } from './state.js';
+import { MONTHS, DOW, PHASE_LABELS, fromISO, toISO, todayISO, fmtShort, escapeHtml } from './utils.js';
+import { computeCurrent, computeTrend, computeStreak, computeMinMax, computeMonthlySummary, sortedDates } from './derived.js';
 import { renderChart } from './chart.js';
 import { openDayModal } from './modal.js';
-import { loadRecentActivity } from './storage.js';
+import { loadRecentActivity, loadCurrentGoal, loadGoalHistory } from './storage.js';
 
 export function renderStats(){
   const cur = computeCurrent();
@@ -147,11 +147,116 @@ export async function renderActivity(){
   }).join('');
 }
 
+export async function renderGoal(){
+  const goal = await loadCurrentGoal();
+  setCurrentGoal(goal);
+
+  const weightEl = document.getElementById('goal-weight-display');
+  const progressEl = document.getElementById('goal-progress');
+  const phaseEl = document.getElementById('goal-phase-badge');
+  const cur = computeCurrent();
+
+  if(goal && goal.target_weight != null){
+    weightEl.textContent = Number(goal.target_weight).toFixed(2)+' kg';
+    if(cur){
+      const diff = goal.target_weight - cur.weight;
+      if(Math.abs(diff) < 0.05){
+        progressEl.textContent = '¡Estás en tu meta!';
+      } else if(diff < 0){
+        progressEl.textContent = 'Te faltan '+Math.abs(diff).toFixed(2)+' kg para bajar';
+      } else {
+        progressEl.textContent = 'Te faltan '+diff.toFixed(2)+' kg para subir';
+      }
+    } else {
+      progressEl.textContent = '';
+    }
+  } else {
+    weightEl.textContent = 'Sin meta definida';
+    progressEl.textContent = '';
+  }
+
+  if(goal && goal.phase){
+    phaseEl.textContent = PHASE_LABELS[goal.phase];
+    phaseEl.className = 'goal-phase-badge phase-'+goal.phase;
+  } else {
+    phaseEl.textContent = 'Sin fase definida';
+    phaseEl.className = 'goal-phase-badge phase-none';
+  }
+
+  const histList = document.getElementById('goal-history-list');
+  const rows = await loadGoalHistory(10);
+  if(rows.length === 0){
+    histList.innerHTML = '<div class="empty-state">Sin cambios registrados.</div>';
+    return;
+  }
+  histList.innerHTML = rows.map(r=>{
+    const when = fmtDateTime(r.created_at);
+    const w = r.target_weight != null ? Number(r.target_weight).toFixed(2)+' kg' : 'sin meta';
+    const p = r.phase ? PHASE_LABELS[r.phase] : 'sin fase';
+    return `<div class="activity-item">
+      <span class="act-detail">${w} · ${p}</span>
+      <span class="act-when">${when}</span>
+    </div>`;
+  }).join('');
+}
+
+export function renderMonthlySummary(){
+  const summary = computeMonthlySummary(viewMonth);
+  const labelEl = document.getElementById('month-summary-label');
+  const bodyEl = document.getElementById('month-summary-body');
+  labelEl.textContent = MONTHS[viewMonth.getMonth()]+' '+viewMonth.getFullYear();
+
+  if(!summary){
+    bodyEl.innerHTML = '<div class="empty-state">Sin registros este mes.</div>';
+    return;
+  }
+
+  const netDir = summary.netChange > 0.05 ? 'up' : (summary.netChange < -0.05 ? 'down' : 'flat');
+  const netArrow = netDir==='up' ? '↗' : (netDir==='down' ? '↘' : '→');
+  const netCls = 'trend-'+netDir;
+
+  let cmpHtml = '<span>sin datos del mes anterior para comparar</span>';
+  if(summary.prevAvg != null){
+    const d = summary.avgDelta;
+    const dir = d > 0.05 ? 'up' : (d < -0.05 ? 'down' : 'flat');
+    const arrow = dir==='up' ? '↗' : (dir==='down' ? '↘' : '→');
+    cmpHtml = '<span class="trend-arrow trend-'+dir+'">'+arrow+'</span> <span class="trend-'+dir+'">'+(d>=0?'+':'')+d.toFixed(2)+' kg</span> vs. mes anterior (promedio '+summary.prevAvg.toFixed(2)+' kg)';
+  }
+
+  bodyEl.innerHTML = `
+    <div class="month-grid">
+      <div>
+        <div class="goal-label">Promedio</div>
+        <div class="month-val">${summary.avg.toFixed(2)} kg</div>
+      </div>
+      <div>
+        <div class="goal-label">Cambio en el mes</div>
+        <div class="month-val"><span class="trend-arrow ${netCls}">${netArrow}</span> <span class="${netCls}">${summary.netChange>=0?'+':''}${summary.netChange.toFixed(2)} kg</span></div>
+      </div>
+      <div>
+        <div class="goal-label">Máximo</div>
+        <div class="month-val">${summary.max.weight.toFixed(2)} kg<span class="month-sub">${fmtShort(fromISO(summary.max.date))}</span></div>
+      </div>
+      <div>
+        <div class="goal-label">Mínimo</div>
+        <div class="month-val">${summary.min.weight.toFixed(2)} kg<span class="month-sub">${fmtShort(fromISO(summary.min.date))}</span></div>
+      </div>
+      <div>
+        <div class="goal-label">Consistencia</div>
+        <div class="month-val">${summary.count}/${summary.daysInMonth}<span class="month-sub">días registrados</span></div>
+      </div>
+    </div>
+    <div class="month-compare">${cmpHtml}</div>
+  `;
+}
+
 export function renderAll(){
   renderStats();
   renderCalendar();
+  renderMonthlySummary();
   renderChart();
   renderNotes();
   renderRecords();
   renderActivity();
+  renderGoal();
 }

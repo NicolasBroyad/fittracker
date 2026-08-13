@@ -52,3 +52,26 @@ export async function loadRecentActivity(limit = 20){
   if(error){ console.error(error); return []; }
   return data || [];
 }
+
+export async function loadCurrentGoal(){
+  const { data, error } = await sb.from('weight_goals')
+    .select('target_weight,phase,created_at')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if(error){ console.error(error); return null; }
+  return data;
+}
+
+export async function loadGoalHistory(limit = 10){
+  const { data, error } = await sb.from('weight_goals')
+    .select('target_weight,phase,created_at')
+    .order('created_at', { ascending: false })
+    .limit(limit);
+  if(error){ console.error(error); return []; }
+  return data || [];
+}
+
+export async function saveGoal(targetWeight, phase){
+  return sb.from('weight_goals').insert({ target_weight: targetWeight, phase });
+}

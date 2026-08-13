@@ -76,6 +76,30 @@
     </div>
   </div>
 
+  <div class="panel goal-panel">
+    <div class="panel-head">
+      <h2>Meta y objetivo</h2>
+      <button class="btn-expand" id="btn-goal-edit" title="Editar meta">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+      </button>
+    </div>
+    <div class="goal-body">
+      <div class="goal-main">
+        <div class="goal-label">Meta de peso</div>
+        <div class="goal-weight" id="goal-weight-display">—</div>
+        <div class="goal-progress" id="goal-progress"></div>
+      </div>
+      <div class="goal-phase-wrap">
+        <div class="goal-label">Fase actual</div>
+        <span class="goal-phase-badge phase-none" id="goal-phase-badge">—</span>
+      </div>
+    </div>
+    <details class="goal-history">
+      <summary>Historial de metas</summary>
+      <div class="activity-list" id="goal-history-list"></div>
+    </details>
+  </div>
+
   <div class="panels">
     <div class="panel">
       <div class="panel-head">
@@ -109,6 +133,14 @@
       <div class="chart-scroll"><div id="chart-container"></div></div>
       <div class="chart-legend" id="chart-legend"></div>
     </div>
+  </div>
+
+  <div class="panel month-summary-panel">
+    <div class="panel-head">
+      <h2>Resumen mensual</h2>
+      <div class="sub" id="month-summary-label"></div>
+    </div>
+    <div id="month-summary-body"></div>
   </div>
 
   <div class="panel notes-panel">
@@ -184,6 +216,30 @@
     </div>
     <div class="chart-scroll"><div id="chart-container-big"></div></div>
     <div class="chart-legend" id="chart-legend-big"></div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="goal-modal-overlay">
+  <div class="modal">
+    <h3>Meta y objetivo</h3>
+    <div class="field">
+      <label for="goal-input-weight">Peso objetivo (kg) — opcional</label>
+      <input type="text" id="goal-input-weight" inputmode="decimal" autocomplete="off" placeholder="68.00">
+    </div>
+    <div class="field">
+      <label for="goal-phase">Fase</label>
+      <select id="goal-phase">
+        <option value="">Sin definir</option>
+        <option value="volumen">Volumen</option>
+        <option value="definicion">Definición</option>
+        <option value="mantenimiento">Mantenimiento</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-delete" id="btn-goal-clear">Quitar meta</button>
+      <button class="btn btn-cancel" id="goal-modal-cancel">Cancelar</button>
+      <button class="btn btn-save" id="goal-modal-save">Guardar</button>
+    </div>
   </div>
 </div>
 

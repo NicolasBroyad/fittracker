@@ -1,6 +1,12 @@
 export const MONTHS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
 export const DOW = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
 
+export const PHASE_LABELS = {
+  volumen: 'Volumen',
+  definicion: 'Definición',
+  mantenimiento: 'Mantenimiento',
+};
+
 export function pad(n){ return n<10 ? '0'+n : ''+n; }
 export function toISO(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate()); }
 export function fromISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }

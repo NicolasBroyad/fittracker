@@ -92,3 +92,48 @@ export function linreg(points){
   const intercept = (sy - slope*sx)/n;
   return { slope, intercept };
 }
+
+function monthEntryDates(year, month){
+  return sortedDates().filter(d=>{
+    const dt = fromISO(d);
+    return dt.getFullYear()===year && dt.getMonth()===month;
+  });
+}
+
+export function computeMonthlySummary(viewMonth){
+  const year = viewMonth.getFullYear(), month = viewMonth.getMonth();
+  const dates = monthEntryDates(year, month);
+  if(dates.length===0) return null;
+
+  const weights = dates.map(d=>entries[d].weight);
+  const avg = weights.reduce((a,b)=>a+b,0)/weights.length;
+
+  let min = { date: dates[0], weight: entries[dates[0]].weight };
+  let max = { date: dates[0], weight: entries[dates[0]].weight };
+  dates.forEach(d=>{
+    const w = entries[d].weight;
+    if(w < min.weight) min = { date: d, weight: w };
+    if(w > max.weight) max = { date: d, weight: w };
+  });
+
+  const netChange = entries[dates[dates.length-1]].weight - entries[dates[0]].weight;
+
+  let prevMonth = month-1, prevYear = year;
+  if(prevMonth < 0){ prevMonth = 11; prevYear--; }
+  const prevDates = monthEntryDates(prevYear, prevMonth);
+  let prevAvg = null;
+  if(prevDates.length > 0){
+    const prevWeights = prevDates.map(d=>entries[d].weight);
+    prevAvg = prevWeights.reduce((a,b)=>a+b,0)/prevWeights.length;
+  }
+
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+
+  return {
+    count: dates.length,
+    daysInMonth,
+    avg, min, max, netChange,
+    prevAvg,
+    avgDelta: prevAvg!=null ? avg-prevAvg : null,
+  };
+}

@@ -352,6 +352,44 @@ body{
 .record-item .rw{ font-family:'JetBrains Mono', monospace; font-size:0.85rem; font-weight:700; color:var(--accent); min-width:64px; }
 .record-item .rt{ font-size:0.8rem; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
+/* goal panel */
+.goal-panel{ margin-top:14px; }
+.goal-body{ display:flex; justify-content:space-between; align-items:flex-start; gap:20px; flex-wrap:wrap; }
+.goal-label{
+  text-transform:uppercase; letter-spacing:0.1em; font-size:0.66rem; font-weight:600;
+  color:var(--ink-faint); margin-bottom:8px;
+}
+.goal-weight{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:1.7rem; color:var(--ink); }
+.goal-progress{ font-size:0.78rem; color:var(--ink-soft); margin-top:6px; }
+.goal-phase-badge{
+  display:inline-block; font-size:0.72rem; font-weight:700; padding:6px 14px; border-radius:999px;
+  font-family:'JetBrains Mono', monospace;
+}
+.phase-volumen{ background:var(--accent-soft); color:var(--accent); }
+.phase-definicion{ background:var(--loss-soft); color:var(--loss); }
+.phase-mantenimiento{ background:var(--brass-soft); color:var(--brass); }
+.phase-none{ background:var(--paper-deep); color:var(--ink-faint); }
+.goal-history{ margin-top:16px; }
+.goal-history summary{
+  cursor:pointer; font-size:0.74rem; color:var(--ink-faint); font-weight:600; list-style:none;
+}
+.goal-history summary::-webkit-details-marker{ display:none; }
+.goal-history summary::before{ content:"▸"; display:inline-block; margin-right:6px; }
+.goal-history[open] summary::before{ content:"▾"; }
+.goal-history .activity-list{ margin-top:10px; }
+
+/* monthly summary */
+.month-summary-panel{ margin-top:14px; }
+.month-grid{
+  display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:18px;
+}
+.month-val{ font-family:'JetBrains Mono', monospace; font-weight:700; font-size:1.1rem; color:var(--ink); }
+.month-sub{ font-size:0.68rem; font-weight:500; color:var(--ink-faint); margin-left:4px; }
+.month-compare{
+  margin-top:16px; padding-top:14px; border-top:1px dashed var(--line);
+  font-size:0.82rem; color:var(--ink-soft);
+}
+
 /* activity log */
 .activity-panel{
   margin-top:14px;
@@ -438,13 +476,14 @@ body{
 .view-note.empty{ color:var(--ink-faint); font-style:italic; }
 .field{ margin-bottom:14px; }
 .field label{ display:block; font-size:0.68rem; text-transform:uppercase; letter-spacing:0.08em; color:var(--ink-faint); margin-bottom:6px; font-weight:600;}
-.field input, .field textarea{
+.field input, .field textarea, .field select{
   width:100%; border:1px solid var(--line-strong); background:var(--paper);
   border-radius:var(--radius-sm); padding:10px 12px; font-family:'JetBrains Mono', monospace;
   font-size:1rem; color:var(--ink); resize:none;
 }
 .field textarea{ font-family:'Inter',sans-serif; font-size:0.85rem; min-height:60px; }
-.field input:focus, .field textarea:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+.field select{ font-family:'Inter',sans-serif; font-size:0.9rem; cursor:pointer; }
+.field input:focus, .field textarea:focus, .field select:focus{ outline:2px solid var(--accent); outline-offset:1px; }
 .modal-actions{ display:flex; gap:8px; margin-top:18px; }
 .btn{
   flex:1; border:none; border-radius:999px; padding:11px; font-weight:600;
