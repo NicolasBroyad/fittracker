@@ -6,6 +6,7 @@ import { setActiveTab, setChartRange, openChartModal, closeChartModal, rerenderI
 import { wireAuth, checkSession } from './auth.js';
 import { initTheme } from './theme.js';
 import { openGoalModal, closeGoalModal, submitGoal, clearGoal } from './goal.js';
+import { exportCSV } from './export.js';
 
 initTheme();
 
@@ -43,6 +44,7 @@ document.getElementById('goal-modal-cancel').addEventListener('click', closeGoal
 document.getElementById('goal-modal-save').addEventListener('click', submitGoal);
 document.getElementById('btn-goal-clear').addEventListener('click', clearGoal);
 document.getElementById('goal-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='goal-modal-overlay') closeGoalModal(); });
+document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
 
 const now = new Date();
 document.getElementById('today-label').textContent = DOW[(now.getDay()+6)%7]+' '+now.getDate()+' de '+MONTHS[now.getMonth()]+' de '+now.getFullYear();
