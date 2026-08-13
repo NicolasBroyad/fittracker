@@ -1,5 +1,5 @@
 import { entries, viewMonth, setCurrentGoal } from './state.js';
-import { MONTHS, DOW, PHASE_LABELS, fromISO, toISO, todayISO, fmtShort, escapeHtml } from './utils.js';
+import { MONTHS, DOW, PHASE_LABELS, fromISO, toISO, todayISO, fmtShort, escapeHtml, trendArrowSvg } from './utils.js';
 import { computeCurrent, computeTrend, computeStreak, computeMinMax, computeMonthlySummary, computeWeeklyAverage, sortedDates } from './derived.js';
 import { renderChart } from './chart.js';
 import { openDayModal } from './modal.js';
@@ -23,7 +23,7 @@ export function renderStats(){
     elSub.textContent = 'datos insuficientes';
   } else {
     const dir = trend.delta > 0.05 ? 'up' : (trend.delta < -0.05 ? 'down' : 'flat');
-    const arrow = dir==='up' ? '↗' : (dir==='down' ? '↘' : '→');
+    const arrow = trendArrowSvg(dir);
     const cls = 'trend-'+dir;
     elVal.innerHTML = '<span class="trend-arrow '+cls+'">'+arrow+'</span><span class="'+cls+'">'+(trend.delta>=0?'+':'')+trend.delta.toFixed(2)+' kg</span>';
     elSub.textContent = (trend.pct>=0?'+':'')+trend.pct.toFixed(1)+'% · últimos '+trend.n1+' vs '+trend.n0+' registros previos';
@@ -138,7 +138,7 @@ export async function renderActivity(){
       detail = Number(r.new_weight).toFixed(2)+' kg';
     } else if(r.action === 'updated'){
       actionLabel = 'Editado'; actionClass = 'act-updated';
-      detail = Number(r.previous_weight).toFixed(2)+' kg → '+Number(r.new_weight).toFixed(2)+' kg';
+      detail = Number(r.previous_weight).toFixed(2)+' kg <span class="inline-arrow">'+trendArrowSvg('flat')+'</span> '+Number(r.new_weight).toFixed(2)+' kg';
     } else {
       actionLabel = 'Eliminado'; actionClass = 'act-deleted';
       detail = Number(r.previous_weight).toFixed(2)+' kg';
@@ -217,14 +217,14 @@ export function renderMonthlySummary(){
   }
 
   const netDir = summary.netChange > 0.05 ? 'up' : (summary.netChange < -0.05 ? 'down' : 'flat');
-  const netArrow = netDir==='up' ? '↗' : (netDir==='down' ? '↘' : '→');
+  const netArrow = trendArrowSvg(netDir);
   const netCls = 'trend-'+netDir;
 
   let cmpHtml = '<span>sin datos del mes anterior para comparar</span>';
   if(summary.prevAvg != null){
     const d = summary.avgDelta;
     const dir = d > 0.05 ? 'up' : (d < -0.05 ? 'down' : 'flat');
-    const arrow = dir==='up' ? '↗' : (dir==='down' ? '↘' : '→');
+    const arrow = trendArrowSvg(dir);
     cmpHtml = '<span class="trend-arrow trend-'+dir+'">'+arrow+'</span> <span class="trend-'+dir+'">'+(d>=0?'+':'')+d.toFixed(2)+' kg</span> vs. mes anterior (promedio '+summary.prevAvg.toFixed(2)+' kg)';
   }
 

@@ -208,10 +208,17 @@ body{
   align-items:center;
   gap:8px;
 }
-.trend-arrow{ font-size:1.3rem; line-height:1;}
+.trend-arrow{
+  font-size:1.3rem; line-height:1;
+  display:inline-flex; align-items:center; vertical-align:-0.15em;
+}
 .trend-up{ color:var(--accent); }
 .trend-down{ color:var(--loss); }
 .trend-flat{ color:var(--ink-faint); }
+.inline-arrow{
+  display:inline-flex; align-items:center; vertical-align:-0.1em;
+  color:var(--ink-faint);
+}
 .card-trend .sub{ font-size:0.72rem; color:var(--ink-soft); margin-top:6px; }
 
 .card-streak .value{

@@ -30,3 +30,12 @@ export function escapeHtml(s){
   div.textContent = s;
   return div.innerHTML;
 }
+
+const TREND_ARROW_SVG = {
+  up: '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 17L17 7"/><path d="M8 7h9v9"/></svg>',
+  down: '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7L17 17"/><path d="M17 8v9H8"/></svg>',
+  flat: '<svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M13 6l6 6-6 6"/></svg>',
+};
+export function trendArrowSvg(dir){
+  return TREND_ARROW_SVG[dir] || TREND_ARROW_SVG.flat;
+}
