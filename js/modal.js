@@ -3,6 +3,33 @@ import { fromISO, MONTHS, DOW, showToast } from './utils.js';
 import { upsertEntry, deleteEntryByDate } from './storage.js';
 import { renderAll } from './render.js';
 
+export function openDayModal(iso){
+  if(entries[iso]) openViewModal(iso);
+  else openModal(iso);
+}
+
+export function openViewModal(iso){
+  setSelectedDateStr(iso);
+  const d = fromISO(iso);
+  const e = entries[iso];
+  document.getElementById('view-modal-date').textContent = DOW[(d.getDay()+6)%7]+' '+d.getDate()+' de '+MONTHS[d.getMonth()]+' de '+d.getFullYear();
+  document.getElementById('view-modal-weight').textContent = e.weight.toFixed(2)+' kg';
+  const noteEl = document.getElementById('view-modal-note');
+  const hasNote = e.note && e.note.trim() !== '';
+  noteEl.textContent = hasNote ? e.note : 'Sin nota';
+  noteEl.classList.toggle('empty', !hasNote);
+  document.getElementById('view-modal-overlay').classList.remove('hidden');
+}
+export function closeViewModal(){
+  document.getElementById('view-modal-overlay').classList.add('hidden');
+  setSelectedDateStr(null);
+}
+export function editFromViewModal(){
+  const iso = selectedDateStr;
+  closeViewModal();
+  openModal(iso);
+}
+
 export function openModal(iso){
   setSelectedDateStr(iso);
   const d = fromISO(iso);

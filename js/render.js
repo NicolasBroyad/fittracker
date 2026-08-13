@@ -2,7 +2,7 @@ import { entries, viewMonth } from './state.js';
 import { MONTHS, DOW, fromISO, toISO, todayISO, fmtShort, escapeHtml } from './utils.js';
 import { computeCurrent, computeTrend, computeStreak, computeMinMax, sortedDates } from './derived.js';
 import { renderChart } from './chart.js';
-import { openModal } from './modal.js';
+import { openDayModal } from './modal.js';
 
 export function renderStats(){
   const cur = computeCurrent();
@@ -69,7 +69,7 @@ export function renderCalendar(){
       el.title = entries[iso].weight.toFixed(2)+' kg'+(entries[iso].note ? ' — '+entries[iso].note : '');
     }
     if(!isFuture){
-      el.addEventListener('click', ()=>openModal(iso));
+      el.addEventListener('click', ()=>openDayModal(iso));
     }
     grid.appendChild(el);
   }
@@ -107,7 +107,7 @@ export function renderRecords(){
     </div>`;
   }).join('');
   list.querySelectorAll('.record-item').forEach(el=>{
-    el.addEventListener('click', ()=>openModal(el.dataset.date));
+    el.addEventListener('click', ()=>openDayModal(el.dataset.date));
   });
 }
 
