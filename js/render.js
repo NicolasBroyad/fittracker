@@ -3,6 +3,7 @@ import { MONTHS, DOW, fromISO, toISO, todayISO, fmtShort, escapeHtml } from './u
 import { computeCurrent, computeTrend, computeStreak, computeMinMax, sortedDates } from './derived.js';
 import { renderChart } from './chart.js';
 import { openDayModal } from './modal.js';
+import { loadRecentActivity } from './storage.js';
 
 export function renderStats(){
   const cur = computeCurrent();
@@ -111,10 +112,46 @@ export function renderRecords(){
   });
 }
 
+function fmtDateTime(isoTimestamp){
+  const d = new Date(isoTimestamp);
+  const hh = String(d.getHours()).padStart(2,'0');
+  const mm = String(d.getMinutes()).padStart(2,'0');
+  return fmtShort(d)+', '+hh+':'+mm;
+}
+
+export async function renderActivity(){
+  const list = document.getElementById('activity-list');
+  if(!list) return;
+  const rows = await loadRecentActivity(20);
+  if(rows.length===0){ list.innerHTML = '<div class="empty-state">Sin actividad reciente.</div>'; return; }
+  list.innerHTML = rows.map(r=>{
+    const dateLabel = fmtShort(fromISO(r.entry_date));
+    const when = fmtDateTime(r.changed_at);
+    let actionLabel, actionClass, detail;
+    if(r.action === 'created'){
+      actionLabel = 'Creado'; actionClass = 'act-created';
+      detail = Number(r.new_weight).toFixed(2)+' kg';
+    } else if(r.action === 'updated'){
+      actionLabel = 'Editado'; actionClass = 'act-updated';
+      detail = Number(r.previous_weight).toFixed(2)+' kg → '+Number(r.new_weight).toFixed(2)+' kg';
+    } else {
+      actionLabel = 'Eliminado'; actionClass = 'act-deleted';
+      detail = Number(r.previous_weight).toFixed(2)+' kg';
+    }
+    return `<div class="activity-item">
+      <span class="act-badge ${actionClass}">${actionLabel}</span>
+      <span class="act-date">${dateLabel}</span>
+      <span class="act-detail">${detail}</span>
+      <span class="act-when">${when}</span>
+    </div>`;
+  }).join('');
+}
+
 export function renderAll(){
   renderStats();
   renderCalendar();
   renderChart();
   renderNotes();
   renderRecords();
+  renderActivity();
 }

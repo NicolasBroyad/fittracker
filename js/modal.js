@@ -1,6 +1,6 @@
 import { entries, selectedDateStr, setSelectedDateStr } from './state.js';
 import { fromISO, MONTHS, DOW, showToast } from './utils.js';
-import { upsertEntry, deleteEntryByDate } from './storage.js';
+import { upsertEntry, deleteEntryByDate, logChange } from './storage.js';
 import { renderAll } from './render.js';
 
 export function openDayModal(iso){
@@ -46,21 +46,26 @@ export function closeModal(){
   setSelectedDateStr(null);
 }
 export async function saveEntry(){
-  const w = parseFloat(document.getElementById('input-weight').value);
-  if(isNaN(w) || w<=0){ showToast('Ingresá un peso válido'); return; }
+  const raw = document.getElementById('input-weight').value.trim().replace(',', '.');
+  const w = parseFloat(raw);
+  if(raw === '' || isNaN(w) || w<=0){ showToast('Ingresá un peso válido'); return; }
   const note = document.getElementById('input-note').value.trim();
   const weight = Math.round(w*100)/100;
+  const previous = entries[selectedDateStr] ? { ...entries[selectedDateStr] } : null;
   const { error } = await upsertEntry(selectedDateStr, weight, note);
   if(error){ console.error(error); showToast('No se pudo guardar'); return; }
   entries[selectedDateStr] = { weight, note };
+  logChange(selectedDateStr, previous ? 'updated' : 'created', previous, { weight, note });
   closeModal();
   renderAll();
   showToast('Guardado');
 }
 export async function deleteEntry(){
+  const previous = entries[selectedDateStr] ? { ...entries[selectedDateStr] } : null;
   const { error } = await deleteEntryByDate(selectedDateStr);
   if(error){ console.error(error); showToast('No se pudo eliminar'); return; }
   delete entries[selectedDateStr];
+  logChange(selectedDateStr, 'deleted', previous, null);
   closeModal();
   renderAll();
   showToast('Registro eliminado');

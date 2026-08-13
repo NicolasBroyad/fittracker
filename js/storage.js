@@ -31,3 +31,24 @@ export async function upsertEntry(date, weight, note){
 export async function deleteEntryByDate(date){
   return sb.from('weight_entries').delete().eq('date', date);
 }
+
+export async function logChange(entryDate, action, previous, next){
+  const { error } = await sb.from('weight_entries_log').insert({
+    entry_date: entryDate,
+    action,
+    previous_weight: previous ? previous.weight : null,
+    previous_note: previous ? previous.note : null,
+    new_weight: next ? next.weight : null,
+    new_note: next ? next.note : null,
+  });
+  if(error) console.error('No se pudo registrar la actividad', error);
+}
+
+export async function loadRecentActivity(limit = 20){
+  const { data, error } = await sb.from('weight_entries_log')
+    .select('entry_date,action,previous_weight,previous_note,new_weight,new_note,changed_at')
+    .order('changed_at', { ascending: false })
+    .limit(limit);
+  if(error){ console.error(error); return []; }
+  return data || [];
+}

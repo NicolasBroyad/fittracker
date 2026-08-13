@@ -124,6 +124,11 @@
     <div class="records-list" id="records-list"></div>
   </div>
 
+  <details class="activity-panel" id="activity-panel">
+    <summary>Actividad reciente (creados, editados, eliminados)</summary>
+    <div class="activity-list" id="activity-list"></div>
+  </details>
+
 </div>
 
 <div class="modal-overlay hidden" id="view-modal-overlay">
@@ -151,7 +156,7 @@
     <div class="modal-date" id="modal-date"></div>
     <div class="field">
       <label for="input-weight">Peso (kg)</label>
-      <input type="number" id="input-weight" step="0.05" inputmode="decimal" placeholder="72.50">
+      <input type="text" id="input-weight" inputmode="decimal" autocomplete="off" placeholder="72.50">
     </div>
     <div class="field">
       <label for="input-note">Nota (opcional)</label>

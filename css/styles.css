@@ -352,6 +352,45 @@ body{
 .record-item .rw{ font-family:'JetBrains Mono', monospace; font-size:0.85rem; font-weight:700; color:var(--accent); min-width:64px; }
 .record-item .rt{ font-size:0.8rem; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 
+/* activity log */
+.activity-panel{
+  margin-top:14px;
+  background:var(--paper-card);
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:14px 18px;
+}
+.activity-panel summary{
+  cursor:pointer;
+  font-size:0.76rem;
+  color:var(--ink-faint);
+  font-weight:600;
+  list-style:none;
+}
+.activity-panel summary::-webkit-details-marker{ display:none; }
+.activity-panel summary::before{
+  content:"▸";
+  display:inline-block;
+  margin-right:6px;
+}
+.activity-panel[open] summary::before{ content:"▾"; }
+.activity-list{ margin-top:12px; max-height:320px; overflow-y:auto; }
+.activity-item{
+  display:flex; align-items:baseline; gap:10px; padding:8px 0; flex-wrap:wrap;
+  font-size:0.78rem;
+}
+.activity-item + .activity-item{ border-top:1px dashed var(--line); }
+.act-badge{
+  font-size:0.62rem; text-transform:uppercase; letter-spacing:0.05em; font-weight:700;
+  padding:2px 8px; border-radius:999px; font-family:'JetBrains Mono', monospace;
+}
+.act-created{ background:var(--accent-soft); color:var(--accent); }
+.act-updated{ background:var(--brass-soft); color:var(--brass); }
+.act-deleted{ background:var(--loss-soft); color:var(--loss); }
+.act-date{ font-family:'JetBrains Mono', monospace; color:var(--ink-soft); min-width:56px; }
+.act-detail{ font-family:'JetBrains Mono', monospace; color:var(--ink); }
+.act-when{ margin-left:auto; font-size:0.68rem; color:var(--ink-faint); font-family:'JetBrains Mono', monospace; }
+
 /* chart modal */
 .chart-modal{
   background:var(--paper-card); border-radius:16px; padding:24px;
