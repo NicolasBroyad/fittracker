@@ -281,6 +281,14 @@
     font-family:'Inter',sans-serif;
   }
   .tabs button.active{ background:var(--paper-card); color:var(--ink); box-shadow:0 1px 2px rgba(30,42,34,.12); }
+  .btn-expand{
+    width:28px;height:28px;border-radius:50%;
+    border:1px solid var(--line-strong); background:var(--paper);
+    color:var(--ink-soft); cursor:pointer; font-size:0.85rem;
+    display:flex;align-items:center;justify-content:center;
+    flex:0 0 auto;
+  }
+  .btn-expand:hover{ background:var(--accent-soft); color:var(--ink); }
   .chart-scroll{ overflow-x:auto; padding-bottom:4px; }
   .chart-scroll::-webkit-scrollbar{ height:6px; }
   .chart-scroll::-webkit-scrollbar-thumb{ background:var(--line-strong); border-radius:4px; }
@@ -298,6 +306,39 @@
   .note-item .nw{ font-family:'JetBrains Mono', monospace; font-size:0.78rem; font-weight:600; color:var(--accent); min-width:56px; }
   .note-item .nt{ font-size:0.82rem; color:var(--ink); }
   .empty-state{ font-size:0.8rem; color:var(--ink-faint); padding:8px 0; }
+
+  /* records list */
+  .records-panel{ margin-top:14px; }
+  .records-list{ max-height:420px; overflow-y:auto; }
+  .record-item{
+    display:flex; gap:12px; padding:10px 6px; align-items:baseline;
+    cursor:pointer; border-radius:8px;
+  }
+  .record-item:hover{ background:var(--paper-deep); }
+  .record-item + .record-item{ border-top:1px dashed var(--line); }
+  .record-item .rd{ font-family:'JetBrains Mono', monospace; font-size:0.76rem; color:var(--ink-soft); min-width:150px; }
+  .record-item .rw{ font-family:'JetBrains Mono', monospace; font-size:0.85rem; font-weight:700; color:var(--accent); min-width:64px; }
+  .record-item .rt{ font-size:0.8rem; color:var(--ink-soft); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* chart modal */
+  .chart-modal{
+    background:var(--paper-card); border-radius:16px; padding:24px;
+    width:100%; max-width:1100px; max-height:90vh; overflow-y:auto;
+    border:1px solid var(--line); box-shadow:0 20px 50px rgba(30,42,34,0.25);
+  }
+  .chart-modal-head{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:18px; gap:12px; flex-wrap:wrap;
+  }
+  .chart-modal-head h2{
+    font-family:'Fraunces', serif; font-size:1.3rem; font-weight:600; margin:0;
+  }
+  .chart-modal-close{
+    width:30px;height:30px;border-radius:50%; border:1px solid var(--line-strong);
+    background:var(--paper); cursor:pointer; font-size:0.9rem; color:var(--ink-soft);
+    display:flex;align-items:center;justify-content:center; flex:0 0 auto;
+  }
+  .chart-modal-close:hover{ background:var(--loss-soft); color:var(--loss); }
 
   /* modal */
   .modal-overlay{
@@ -413,9 +454,12 @@
     <div class="panel">
       <div class="panel-head">
         <h2>Evolución</h2>
-        <div class="tabs">
-          <button id="tab-weekly" class="active">Semanal</button>
-          <button id="tab-daily">Diario</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <div class="tabs">
+            <button id="tab-weekly" class="active">Semanal</button>
+            <button id="tab-daily">Diario</button>
+          </div>
+          <button class="btn-expand" id="btn-chart-expand" title="Ampliar">⤢</button>
         </div>
       </div>
       <div class="chart-scroll"><div id="chart-container"></div></div>
@@ -426,6 +470,14 @@
   <div class="panel notes-panel">
     <div class="panel-head"><h2>Notas recientes</h2></div>
     <div id="notes-list"></div>
+  </div>
+
+  <div class="panel records-panel">
+    <div class="panel-head">
+      <h2>Registros</h2>
+      <div class="sub" id="records-count"></div>
+    </div>
+    <div class="records-list" id="records-list"></div>
   </div>
 
 </div>
@@ -447,6 +499,23 @@
       <button class="btn btn-cancel" id="btn-cancel">Cancelar</button>
       <button class="btn btn-save" id="btn-save">Guardar</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="chart-modal-overlay">
+  <div class="chart-modal">
+    <div class="chart-modal-head">
+      <h2>Evolución</h2>
+      <div style="display:flex; align-items:center; gap:8px;">
+        <div class="tabs">
+          <button id="tab-weekly-big" class="active">Semanal</button>
+          <button id="tab-daily-big">Diario</button>
+        </div>
+        <button class="chart-modal-close" id="chart-modal-close" title="Cerrar">✕</button>
+      </div>
+    </div>
+    <div class="chart-scroll"><div id="chart-container-big"></div></div>
+    <div class="chart-legend" id="chart-legend-big"></div>
   </div>
 </div>
 
@@ -693,14 +762,15 @@ function niceTicks(min, max, count){
   return ticks;
 }
 
-function renderChart(){
-  const container = document.getElementById('chart-container');
+function renderChart(containerId, legendId, opts){
+  opts = opts || {};
+  const container = document.getElementById(containerId || 'chart-container');
   container.innerHTML = '';
-  const legend = document.getElementById('chart-legend');
+  const legend = document.getElementById(legendId || 'chart-legend');
   legend.innerHTML = '';
 
   const padL=42, padR=16, padT=18, padB=34;
-  const rowH = 260;
+  const rowH = opts.rowH || 260;
 
   if(activeTab === 'weekly'){
     const weeks = weeklyAverages();
@@ -766,7 +836,7 @@ function renderChart(){
   if(activeTab === 'daily'){
     const daily = dailyWithMovingAvg();
     if(daily.length===0){ container.innerHTML = '<div class="empty-state">Todavía no hay datos suficientes.</div>'; return; }
-    const spacing = 20;
+    const spacing = opts.spacing || 20;
     const width = Math.max((container.parentElement.clientWidth || 480), padL+padR+spacing*(daily.length-1)+20);
     const innerW = width-padL-padR;
     const vals = daily.map(d=>d.weight);
@@ -832,6 +902,28 @@ function escapeHtml(s){
   return div.innerHTML;
 }
 
+/* ================= RENDER: RECORDS ================= */
+function renderRecords(){
+  const dates = sortedDates().slice().reverse();
+  const countEl = document.getElementById('records-count');
+  countEl.textContent = dates.length===0 ? '' : (dates.length+(dates.length===1?' registro':' registros'));
+  const list = document.getElementById('records-list');
+  if(dates.length===0){ list.innerHTML = '<div class="empty-state">Todavía no hay registros.</div>'; return; }
+  list.innerHTML = dates.map(d=>{
+    const e = entries[d];
+    const dObj = fromISO(d);
+    const label = DOW[(dObj.getDay()+6)%7]+' '+dObj.getDate()+' '+MONTHS[dObj.getMonth()].slice(0,3)+' '+dObj.getFullYear();
+    return `<div class="record-item" data-date="${d}">
+      <span class="rd">${label}</span>
+      <span class="rw">${e.weight.toFixed(2)} kg</span>
+      <span class="rt">${e.note ? escapeHtml(e.note) : ''}</span>
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.record-item').forEach(el=>{
+    el.addEventListener('click', ()=>openModal(el.dataset.date));
+  });
+}
+
 /* ================= MODAL ================= */
 function openModal(iso){
   selectedDateStr = iso;
@@ -867,14 +959,44 @@ async function deleteEntry(){
 }
 
 /* ================= WIRE UP ================= */
+let chartModalOpen = false;
+
 function renderAll(){
   renderStats();
   renderCalendar();
   renderChart();
   renderNotes();
+  renderRecords();
 }
 
-window.addEventListener('resize', ()=>{ renderChart(); });
+function setActiveTab(tab){
+  activeTab = tab;
+  document.getElementById('tab-weekly').classList.toggle('active', tab==='weekly');
+  document.getElementById('tab-daily').classList.toggle('active', tab==='daily');
+  document.getElementById('tab-weekly-big').classList.toggle('active', tab==='weekly');
+  document.getElementById('tab-daily-big').classList.toggle('active', tab==='daily');
+  renderChart('chart-container', 'chart-legend');
+  if(chartModalOpen){
+    renderChart('chart-container-big', 'chart-legend-big', {rowH:460, spacing:30});
+  }
+}
+
+function openChartModal(){
+  chartModalOpen = true;
+  document.getElementById('chart-modal-overlay').classList.remove('hidden');
+  renderChart('chart-container-big', 'chart-legend-big', {rowH:460, spacing:30});
+}
+function closeChartModal(){
+  chartModalOpen = false;
+  document.getElementById('chart-modal-overlay').classList.add('hidden');
+}
+
+window.addEventListener('resize', ()=>{
+  renderChart('chart-container', 'chart-legend');
+  if(chartModalOpen){
+    renderChart('chart-container-big', 'chart-legend-big', {rowH:460, spacing:30});
+  }
+});
 
 document.getElementById('cal-prev').addEventListener('click', ()=>{
   viewMonth.setMonth(viewMonth.getMonth()-1);
@@ -884,18 +1006,13 @@ document.getElementById('cal-next').addEventListener('click', ()=>{
   viewMonth.setMonth(viewMonth.getMonth()+1);
   renderCalendar();
 });
-document.getElementById('tab-weekly').addEventListener('click', ()=>{
-  activeTab='weekly';
-  document.getElementById('tab-weekly').classList.add('active');
-  document.getElementById('tab-daily').classList.remove('active');
-  renderChart();
-});
-document.getElementById('tab-daily').addEventListener('click', ()=>{
-  activeTab='daily';
-  document.getElementById('tab-daily').classList.add('active');
-  document.getElementById('tab-weekly').classList.remove('active');
-  renderChart();
-});
+document.getElementById('tab-weekly').addEventListener('click', ()=>setActiveTab('weekly'));
+document.getElementById('tab-daily').addEventListener('click', ()=>setActiveTab('daily'));
+document.getElementById('tab-weekly-big').addEventListener('click', ()=>setActiveTab('weekly'));
+document.getElementById('tab-daily-big').addEventListener('click', ()=>setActiveTab('daily'));
+document.getElementById('btn-chart-expand').addEventListener('click', openChartModal);
+document.getElementById('chart-modal-close').addEventListener('click', closeChartModal);
+document.getElementById('chart-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='chart-modal-overlay') closeChartModal(); });
 document.getElementById('btn-log-today').addEventListener('click', ()=>openModal(todayISO()));
 document.getElementById('btn-cancel').addEventListener('click', closeModal);
 document.getElementById('btn-save').addEventListener('click', saveEntry);
