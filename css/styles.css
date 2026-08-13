@@ -19,6 +19,46 @@
   --radius: 14px;
   --radius-sm: 8px;
 }
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper: #171C18;
+    --paper-card: #1F251F;
+    --paper-deep: #262D26;
+    --ink: #ECF0E8;
+    --ink-soft: #A6B2A2;
+    --ink-faint: #6D7A6A;
+    --line: #2B322B;
+    --line-strong: #3A433A;
+    --accent: #7DB784;
+    --accent-soft: #24301F;
+    --brass: #D6AC72;
+    --brass-soft: #392E1C;
+    --loss: #E2846A;
+    --loss-soft: #3A241D;
+    --lcd-bg: #0F1410;
+    --lcd-text: #ECF0E8;
+    --lcd-accent: #7DB784;
+  }
+}
+:root[data-theme="dark"]{
+  --paper: #171C18;
+  --paper-card: #1F251F;
+  --paper-deep: #262D26;
+  --ink: #ECF0E8;
+  --ink-soft: #A6B2A2;
+  --ink-faint: #6D7A6A;
+  --line: #2B322B;
+  --line-strong: #3A433A;
+  --accent: #7DB784;
+  --accent-soft: #24301F;
+  --brass: #D6AC72;
+  --brass-soft: #392E1C;
+  --loss: #E2846A;
+  --loss-soft: #3A241D;
+  --lcd-bg: #0F1410;
+  --lcd-text: #ECF0E8;
+  --lcd-accent: #7DB784;
+}
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
 body{
@@ -30,6 +70,7 @@ body{
   background-attachment: local;
   color:var(--ink);
   font-family:'Inter', sans-serif;
+  transition: background-color .2s ease, color .2s ease;
   -webkit-font-smoothing:antialiased;
 }
 .app{

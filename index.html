@@ -7,6 +7,14 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/styles.css">
+<script>
+(function(){
+  try{
+    var t = localStorage.getItem('broyi_peso_theme');
+    if(t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t);
+  }catch(e){}
+})();
+</script>
 </head>
 <body>
 
@@ -38,7 +46,10 @@
       <div class="sub" id="today-label"></div>
       <div><button class="btn-logout" id="btn-logout">Cerrar sesión</button></div>
     </div>
-    <button class="btn-primary" id="btn-log-today">＋ Cargar peso de hoy</button>
+    <div style="display:flex; align-items:center; gap:10px;">
+      <button class="btn-expand" id="btn-theme-toggle" title="Cambiar tema">🌙</button>
+      <button class="btn-primary" id="btn-log-today">＋ Cargar peso de hoy</button>
+    </div>
   </div>
 
   <div class="stats-row">

@@ -4,6 +4,9 @@ import { renderCalendar } from './render.js';
 import { openModal, closeModal, saveEntry, deleteEntry } from './modal.js';
 import { setActiveTab, openChartModal, closeChartModal, rerenderIfOpen } from './chart-modal.js';
 import { wireAuth, checkSession } from './auth.js';
+import { initTheme } from './theme.js';
+
+initTheme();
 
 window.addEventListener('resize', rerenderIfOpen);
 
