@@ -385,6 +385,30 @@
   }
   .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
+  /* ---------- Login ---------- */
+  .login-screen{
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    padding:20px;
+  }
+  .login-screen.hidden{ display:none; }
+  .login-card{
+    background:var(--paper-card); border:1px solid var(--line); border-radius:16px;
+    padding:30px; width:100%; max-width:340px;
+    box-shadow:0 20px 50px rgba(30,42,34,0.12);
+  }
+  .login-card h1{
+    font-family:'Fraunces', serif; font-weight:700; font-size:1.5rem; margin:0 0 4px;
+  }
+  .login-card .sub{ font-size:0.82rem; color:var(--ink-soft); margin-bottom:22px; }
+  .login-error{ font-size:0.78rem; color:var(--loss); margin-top:4px; min-height:1em; }
+  .app.hidden{ display:none; }
+  .btn-logout{
+    background:transparent; border:1px solid var(--line-strong); color:var(--ink-soft);
+    font-family:'Inter',sans-serif; font-size:0.72rem; font-weight:600;
+    padding:6px 12px; border-radius:999px; cursor:pointer; margin-top:6px;
+  }
+  .btn-logout:hover{ background:var(--paper-deep); }
+
   @media (max-width: 900px){
     .panels{ grid-template-columns:1fr; }
     .stats-row{ grid-template-columns:1fr 1fr; }
@@ -397,13 +421,34 @@
 </style>
 </head>
 <body>
-<div class="app">
+
+<div class="login-screen" id="login-screen">
+  <div class="login-card">
+    <h1>Registro de Peso</h1>
+    <div class="sub">Ingresá con tu cuenta para ver tus datos.</div>
+    <form id="login-form">
+      <div class="field">
+        <label for="login-email">Email</label>
+        <input type="email" id="login-email" autocomplete="username" required>
+      </div>
+      <div class="field">
+        <label for="login-password">Contraseña</label>
+        <input type="password" id="login-password" autocomplete="current-password" required>
+      </div>
+      <div class="login-error" id="login-error"></div>
+      <button type="submit" class="btn btn-save" id="login-submit" style="width:100%;">Ingresar</button>
+    </form>
+  </div>
+</div>
+
+<div class="app hidden" id="app-root">
 
   <div class="topbar">
     <div>
       <div class="eyebrow">Peso en ayunas · cada mañana</div>
       <h1>Registro de Peso</h1>
       <div class="sub" id="today-label"></div>
+      <div><button class="btn-logout" id="btn-logout">Cerrar sesión</button></div>
     </div>
     <button class="btn-primary" id="btn-log-today">＋ Cargar peso de hoy</button>
   </div>
@@ -521,6 +566,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 /* ================= SEED DATA (importado del excel) ================= */
 const SEED_ENTRIES = {"2026-02-02":66.35,"2026-02-09":66.2,"2026-02-16":66.65,"2026-02-23":68.25,"2026-03-01":67.2,"2026-03-02":67.55,"2026-03-03":67.55,"2026-03-04":68.15,"2026-03-05":68.15,"2026-03-06":68.4,"2026-03-07":68.0,"2026-03-08":68.7,"2026-03-09":68.7,"2026-03-11":69.8,"2026-03-12":69.2,"2026-03-13":70.05,"2026-03-14":69.15,"2026-03-16":69.85,"2026-03-17":69.05,"2026-03-18":69.45,"2026-03-19":69.45,"2026-03-20":69.15,"2026-03-22":69.45,"2026-03-23":70.15,"2026-03-24":69.8,"2026-03-25":70.1,"2026-03-26":70.15,"2026-03-27":70.05,"2026-03-29":70.6,"2026-03-30":70.2,"2026-03-31":69.95,"2026-04-01":69.4,"2026-04-02":70.05,"2026-04-03":70.15,"2026-04-06":71.35,"2026-04-07":70.7,"2026-04-08":70.65,"2026-04-09":71.2,"2026-04-10":70.6,"2026-04-11":70.6,"2026-04-12":70.55,"2026-04-13":70.0,"2026-04-14":70.8,"2026-04-15":71.0,"2026-04-16":70.9,"2026-04-17":71.0,"2026-04-18":72.05,"2026-04-19":71.25,"2026-04-20":70.75,"2026-04-21":71.2,"2026-04-22":70.95,"2026-04-23":71.65,"2026-04-24":72.45,"2026-04-25":71.85,"2026-04-26":71.8,"2026-04-27":71.3,"2026-04-28":73.0,"2026-04-29":72.2,"2026-04-30":72.05,"2026-05-01":72.0,"2026-05-02":72.05,"2026-05-03":72.35,"2026-05-04":72.35,"2026-05-05":71.75,"2026-05-06":72.25,"2026-05-07":72.0,"2026-05-08":72.55,"2026-05-09":72.25,"2026-05-10":71.7,"2026-05-11":72.05,"2026-05-12":72.8,"2026-05-13":71.5,"2026-05-14":72.9,"2026-05-15":73.0,"2026-05-16":72.8,"2026-05-18":72.85,"2026-05-19":72.75,"2026-05-20":73.3,"2026-05-21":73.35,"2026-05-22":72.3,"2026-05-23":72.4,"2026-05-24":73.2,"2026-05-25":72.55,"2026-05-26":72.5,"2026-05-27":72.9,"2026-05-28":73.05,"2026-05-29":73.55,"2026-05-31":73.45,"2026-06-01":73.4,"2026-06-02":72.5,"2026-06-03":73.2,"2026-06-04":73.55,"2026-06-05":73.45,"2026-06-06":73.35,"2026-06-07":73.0,"2026-06-08":73.95,"2026-06-09":73.8,"2026-06-10":73.7,"2026-06-11":73.95,"2026-06-12":72.5,"2026-06-13":73.35,"2026-06-15":73.1,"2026-06-16":73.85,"2026-06-17":73.3,"2026-06-18":73.35,"2026-06-19":74.05,"2026-06-20":73.4,"2026-06-21":73.7,"2026-06-22":74.05,"2026-06-23":73.6,"2026-06-24":74.45,"2026-06-25":73.95,"2026-06-26":73.7,"2026-06-27":73.2,"2026-06-28":73.15,"2026-06-29":73.35,"2026-07-01":72.9,"2026-07-02":73.6,"2026-07-03":72.25,"2026-07-04":73.3,"2026-07-05":73.4,"2026-07-06":73.2,"2026-07-07":73.05,"2026-07-08":72.6,"2026-07-10":73.3,"2026-07-15":71.4,"2026-07-20":71.8,"2026-07-25":70.75,"2026-07-26":71.15,"2026-07-27":71.4,"2026-08-04":71.85,"2026-08-05":71.7,"2026-08-06":71.55,"2026-08-07":71.7,"2026-08-08":72.05,"2026-08-10":71.2,"2026-08-11":71.8,"2026-08-12":72.15,"2026-08-13":72.5};
@@ -554,30 +600,28 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'), 1800);
 }
 
-/* ================= STORAGE (localStorage del navegador) ================= */
-const STORAGE_KEY = 'broyi_peso_entries';
+/* ================= STORAGE (Supabase) ================= */
+const SUPABASE_URL = 'https://ogqbvooefjojaovxhhcx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ncWJ2b29lZmpvamFvdnhoaGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NDczMjIsImV4cCI6MjEwMjIyMzMyMn0.5oMxu9TW87uMqUFVFe00r1M_wfs-brja4OJ0Ynf3R_Q';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 async function loadEntries(){
-  try{
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if(raw){
-      entries = JSON.parse(raw);
-      return;
-    }
-  }catch(e){ /* no hay datos guardados todavía */ }
-  // primera vez: sembrar con el historial importado del excel
+  const { data, error } = await sb.from('weight_entries').select('date,weight,note');
+  if(error){ console.error(error); showToast('Error cargando datos'); entries = {}; return; }
+
+  if(data.length === 0){
+    // primera vez: sembrar con el historial importado del excel
+    const rows = Object.keys(SEED_ENTRIES).map(date => ({ date, weight: SEED_ENTRIES[date], note: '' }));
+    const { error: seedError } = await sb.from('weight_entries').insert(rows);
+    if(seedError){ console.error(seedError); showToast('Error cargando datos iniciales'); }
+    const { data: seeded } = await sb.from('weight_entries').select('date,weight,note');
+    entries = {};
+    (seeded || []).forEach(r => { entries[r.date] = { weight: Number(r.weight), note: r.note || '' }; });
+    return;
+  }
+
   entries = {};
-  for(const date in SEED_ENTRIES){
-    entries[date] = { weight: SEED_ENTRIES[date], note: '' };
-  }
-  await persist();
-}
-async function persist(){
-  try{
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(entries));
-  }catch(e){
-    console.error('storage error', e);
-    showToast('No se pudo guardar');
-  }
+  data.forEach(r => { entries[r.date] = { weight: Number(r.weight), note: r.note || '' }; });
 }
 
 /* ================= DERIVED DATA ================= */
@@ -947,15 +991,19 @@ async function saveEntry(){
   const w = parseFloat(document.getElementById('input-weight').value);
   if(isNaN(w) || w<=0){ showToast('Ingresá un peso válido'); return; }
   const note = document.getElementById('input-note').value.trim();
-  entries[selectedDateStr] = { weight: Math.round(w*100)/100, note };
-  await persist();
+  const weight = Math.round(w*100)/100;
+  const { error } = await sb.from('weight_entries')
+    .upsert({ date: selectedDateStr, weight, note }, { onConflict: 'user_id,date' });
+  if(error){ console.error(error); showToast('No se pudo guardar'); return; }
+  entries[selectedDateStr] = { weight, note };
   closeModal();
   renderAll();
   showToast('Guardado');
 }
 async function deleteEntry(){
+  const { error } = await sb.from('weight_entries').delete().eq('date', selectedDateStr);
+  if(error){ console.error(error); showToast('No se pudo eliminar'); return; }
   delete entries[selectedDateStr];
-  await persist();
   closeModal();
   renderAll();
   showToast('Registro eliminado');
@@ -1025,10 +1073,48 @@ document.getElementById('modal-overlay').addEventListener('click', (e)=>{ if(e.t
 const now = new Date();
 document.getElementById('today-label').textContent = DOW[(now.getDay()+6)%7]+' '+now.getDate()+' de '+MONTHS[now.getMonth()]+' de '+now.getFullYear();
 
-/* ================= INIT ================= */
-(async function init(){
+/* ================= AUTH ================= */
+async function startApp(){
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app-root').classList.remove('hidden');
   await loadEntries();
   renderAll();
+}
+function showLogin(){
+  document.getElementById('app-root').classList.add('hidden');
+  document.getElementById('login-screen').classList.remove('hidden');
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const email = document.getElementById('login-email').value.trim();
+  const password = document.getElementById('login-password').value;
+  const errorEl = document.getElementById('login-error');
+  const btn = document.getElementById('login-submit');
+  errorEl.textContent = '';
+  btn.disabled = true;
+  const { error } = await sb.auth.signInWithPassword({ email, password });
+  btn.disabled = false;
+  if(error){
+    errorEl.textContent = 'Email o contraseña incorrectos';
+    return;
+  }
+  await startApp();
+});
+
+document.getElementById('btn-logout').addEventListener('click', async ()=>{
+  await sb.auth.signOut();
+  showLogin();
+});
+
+/* ================= INIT ================= */
+(async function init(){
+  const { data: { session } } = await sb.auth.getSession();
+  if(session){
+    await startApp();
+  } else {
+    showLogin();
+  }
 })();
 </script>
 </body>
