@@ -1,6 +1,6 @@
 import { entries, viewMonth, setCurrentGoal } from './state.js';
 import { MONTHS, DOW, PHASE_LABELS, fromISO, toISO, todayISO, fmtShort, escapeHtml } from './utils.js';
-import { computeCurrent, computeTrend, computeStreak, computeMinMax, computeMonthlySummary, sortedDates } from './derived.js';
+import { computeCurrent, computeTrend, computeStreak, computeMinMax, computeMonthlySummary, computeWeeklyAverage, sortedDates } from './derived.js';
 import { renderChart } from './chart.js';
 import { openDayModal } from './modal.js';
 import { loadRecentActivity, loadCurrentGoal, loadGoalHistory } from './storage.js';
@@ -9,6 +9,11 @@ export function renderStats(){
   const cur = computeCurrent();
   document.getElementById('stat-current').innerHTML = cur ? cur.weight.toFixed(2)+' <span class="unit">kg</span>' : '— <span class="unit">kg</span>';
   document.getElementById('stat-current-date').textContent = cur ? ('último registro: '+fmtShort(fromISO(cur.date))) : 'sin registros';
+
+  const weeklyAvg = computeWeeklyAverage();
+  document.getElementById('stat-weekly-avg').textContent = weeklyAvg
+    ? 'Promedio 7 días: '+weeklyAvg.avg.toFixed(2)+' kg'
+    : '';
 
   const trend = computeTrend();
   const elVal = document.getElementById('stat-trend');

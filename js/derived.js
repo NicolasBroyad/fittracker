@@ -15,6 +15,14 @@ export function computeCurrent(){
   return { date: d, weight: entries[d].weight };
 }
 
+export function computeWeeklyAverage(){
+  const dates = sortedDates();
+  if(dates.length === 0) return null;
+  const last7 = dates.slice(-7);
+  const avg = last7.reduce((s,d)=>s+entries[d].weight,0)/last7.length;
+  return { avg, n: last7.length };
+}
+
 export function computeTrend(){
   const dates = sortedDates();
   if(dates.length < 2) return null;
