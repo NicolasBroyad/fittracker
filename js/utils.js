@@ -12,6 +12,14 @@ export function toISO(d){ return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad
 export function fromISO(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
 export function todayISO(){ return toISO(new Date()); }
 export function fmtShort(dateObj){ return dateObj.getDate()+' '+MONTHS[dateObj.getMonth()].slice(0,3); }
+export const CHART_RANGE_MONTHS = { '1m':1, '3m':3, '6m':6, '1y':12 };
+export function rangeCutoffISO(range){
+  const months = CHART_RANGE_MONTHS[range];
+  if(!months) return null; // 'all' o valor desconocido: sin recorte
+  const now = new Date();
+  return toISO(new Date(now.getFullYear(), now.getMonth()-months, now.getDate()));
+}
+
 export function mondayOf(d){
   const x = new Date(d);
   const day = (x.getDay()+6)%7; // 0=mon

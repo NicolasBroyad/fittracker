@@ -338,6 +338,14 @@ body{
   flex:0 0 auto;
 }
 .btn-expand:hover{ background:var(--accent-soft); color:var(--ink); }
+.chart-range-row{ margin-bottom:12px; }
+.chart-range-row.hidden{ display:none; }
+.chart-range-select{
+  border:1px solid var(--line-strong); background:var(--paper);
+  border-radius:var(--radius-sm); padding:6px 10px; font-family:'Inter',sans-serif;
+  font-size:0.76rem; font-weight:600; color:var(--ink-soft); cursor:pointer;
+}
+.chart-range-select:focus{ outline:2px solid var(--accent); outline-offset:1px; }
 .chart-scroll{ overflow-x:auto; padding-bottom:4px; }
 .chart-scroll::-webkit-scrollbar{ height:6px; }
 .chart-scroll::-webkit-scrollbar-thumb{ background:var(--line-strong); border-radius:4px; }

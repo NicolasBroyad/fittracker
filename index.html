@@ -131,6 +131,15 @@
           <button class="btn-expand" id="btn-chart-expand" title="Ampliar">⤢</button>
         </div>
       </div>
+      <div class="chart-range-row" id="chart-range-row">
+        <select id="chart-range" class="chart-range-select">
+          <option value="1m">Último mes</option>
+          <option value="3m">Últimos 3 meses</option>
+          <option value="6m">Últimos 6 meses</option>
+          <option value="1y">Último año</option>
+          <option value="all" selected>Toda la historia</option>
+        </select>
+      </div>
       <div class="chart-scroll"><div id="chart-container"></div></div>
       <div class="chart-legend" id="chart-legend"></div>
     </div>
@@ -214,6 +223,15 @@
         </div>
         <button class="chart-modal-close" id="chart-modal-close" title="Cerrar">✕</button>
       </div>
+    </div>
+    <div class="chart-range-row" id="chart-range-row-big">
+      <select id="chart-range-big" class="chart-range-select">
+        <option value="1m">Último mes</option>
+        <option value="3m">Últimos 3 meses</option>
+        <option value="6m">Últimos 6 meses</option>
+        <option value="1y">Último año</option>
+        <option value="all" selected>Toda la historia</option>
+      </select>
     </div>
     <div class="chart-scroll"><div id="chart-container-big"></div></div>
     <div class="chart-legend" id="chart-legend-big"></div>

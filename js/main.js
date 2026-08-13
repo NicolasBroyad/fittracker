@@ -2,7 +2,7 @@ import { viewMonth } from './state.js';
 import { MONTHS, DOW, todayISO } from './utils.js';
 import { renderCalendar, renderMonthlySummary } from './render.js';
 import { openModal, closeModal, saveEntry, deleteEntry, closeViewModal, editFromViewModal } from './modal.js';
-import { setActiveTab, openChartModal, closeChartModal, rerenderIfOpen } from './chart-modal.js';
+import { setActiveTab, setChartRange, openChartModal, closeChartModal, rerenderIfOpen } from './chart-modal.js';
 import { wireAuth, checkSession } from './auth.js';
 import { initTheme } from './theme.js';
 import { openGoalModal, closeGoalModal, submitGoal, clearGoal } from './goal.js';
@@ -25,6 +25,8 @@ document.getElementById('tab-weekly').addEventListener('click', ()=>setActiveTab
 document.getElementById('tab-daily').addEventListener('click', ()=>setActiveTab('daily'));
 document.getElementById('tab-weekly-big').addEventListener('click', ()=>setActiveTab('weekly'));
 document.getElementById('tab-daily-big').addEventListener('click', ()=>setActiveTab('daily'));
+document.getElementById('chart-range').addEventListener('change', (e)=>setChartRange(e.target.value));
+document.getElementById('chart-range-big').addEventListener('change', (e)=>setChartRange(e.target.value));
 document.getElementById('btn-chart-expand').addEventListener('click', openChartModal);
 document.getElementById('chart-modal-close').addEventListener('click', closeChartModal);
 document.getElementById('chart-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='chart-modal-overlay') closeChartModal(); });

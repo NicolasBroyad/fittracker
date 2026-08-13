@@ -1,4 +1,4 @@
-import { chartModalOpen, setChartModalOpen, setActiveTabState } from './state.js';
+import { chartModalOpen, setChartModalOpen, setActiveTabState, setChartRangeState } from './state.js';
 import { renderChart } from './chart.js';
 
 const BIG_OPTS = { rowH: 460, spacing: 30 };
@@ -9,6 +9,18 @@ export function setActiveTab(tab){
   document.getElementById('tab-daily').classList.toggle('active', tab==='daily');
   document.getElementById('tab-weekly-big').classList.toggle('active', tab==='weekly');
   document.getElementById('tab-daily-big').classList.toggle('active', tab==='daily');
+  document.getElementById('chart-range-row').classList.toggle('hidden', tab!=='weekly');
+  document.getElementById('chart-range-row-big').classList.toggle('hidden', tab!=='weekly');
+  renderChart('chart-container', 'chart-legend');
+  if(chartModalOpen){
+    renderChart('chart-container-big', 'chart-legend-big', BIG_OPTS);
+  }
+}
+
+export function setChartRange(range){
+  setChartRangeState(range);
+  document.getElementById('chart-range').value = range;
+  document.getElementById('chart-range-big').value = range;
   renderChart('chart-container', 'chart-legend');
   if(chartModalOpen){
     renderChart('chart-container-big', 'chart-legend-big', BIG_OPTS);

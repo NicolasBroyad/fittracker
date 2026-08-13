@@ -64,8 +64,8 @@ export function computeMinMax(){
   return {min, max};
 }
 
-export function weeklyAverages(){
-  const dates = sortedDates();
+export function weeklyAverages(sinceISO){
+  const dates = sortedDates().filter(d => !sinceISO || d >= sinceISO);
   const buckets = {}; // mondayISO -> [weights]
   for(const d of dates){
     const mon = toISO(mondayOf(fromISO(d)));

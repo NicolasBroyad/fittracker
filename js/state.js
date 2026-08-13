@@ -15,6 +15,10 @@ export function setSelectedDateStr(v){ selectedDateStr = v; }
 export let chartModalOpen = false;
 export function setChartModalOpen(v){ chartModalOpen = v; }
 
+// '1m' | '3m' | '6m' | '1y' | 'all'
+export let chartRange = 'all';
+export function setChartRangeState(v){ chartRange = v; }
+
 // { target_weight, phase, created_at } | null
 export let currentGoal = null;
 export function setCurrentGoal(v){ currentGoal = v; }

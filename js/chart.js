@@ -1,5 +1,5 @@
-import { activeTab } from './state.js';
-import { fromISO, fmtShort } from './utils.js';
+import { activeTab, chartRange } from './state.js';
+import { fromISO, fmtShort, rangeCutoffISO } from './utils.js';
 import { weeklyAverages, dailyWithMovingAvg, linreg } from './derived.js';
 
 function svgEl(tag, attrs){
@@ -28,8 +28,8 @@ export function renderChart(containerId, legendId, opts){
   const rowH = opts.rowH || 260;
 
   if(activeTab === 'weekly'){
-    const weeks = weeklyAverages();
-    if(weeks.length===0){ container.innerHTML = '<div class="empty-state">Todavía no hay datos suficientes.</div>'; return; }
+    const weeks = weeklyAverages(rangeCutoffISO(chartRange));
+    if(weeks.length===0){ container.innerHTML = '<div class="empty-state">No hay datos en el período seleccionado.</div>'; return; }
     const width = Math.max(container.parentElement.clientWidth || 480, 480);
     const innerW = width-padL-padR;
     const vals = weeks.map(w=>w.avg);
