@@ -4,6 +4,8 @@ App personal (uso de un solo usuario) para registrar el peso diario en ayunas. N
 
 Este archivo existe para que una sesión nueva de Claude Code pueda retomar el trabajo sin tener que redescubrir todo el contexto. Léelo entero antes de tocar nada.
 
+**Mantené este archivo al día.** El usuario pidió explícitamente que, cada vez que se haga un cambio lo suficientemente significativo (features nuevas, cambios de arquitectura, tablas nuevas en Supabase, decisiones de diseño no obvias, gotchas descubiertos), se actualice este `CLAUDE.md` en el mismo commit — sin que haga falta que lo pida de nuevo en cada sesión. No hace falta documentar cambios chicos/cosméticos (ajustes de CSS, copy, un fix trivial), pero sí todo lo que otra sesión necesitaría saber para no redescubrirlo de cero.
+
 ## Qué hace la app
 
 - Cargar el peso del día (+ nota opcional) desde un modal.
@@ -11,6 +13,9 @@ Este archivo existe para que una sesión nueva de Claude Code pueda retomar el t
 - Tocar un día del calendario o un ítem de "Registros" que ya tiene dato abre un modal de **solo lectura** con un botón de lápiz para pasar a edición (no se edita directo).
 - Modo claro/oscuro con toggle manual (ícono sol/luna en SVG, no emoji) que respeta la preferencia del sistema por defecto y persiste la elección en `localStorage`.
 - Login obligatorio (un solo usuario) para que los datos no queden expuestos públicamente.
+- Panel "Meta y objetivo": meta de peso opcional + fase (volumen/definición/mantenimiento/sin definir), editable o borrable en cualquier momento, con historial de cambios colapsado.
+- Panel "Resumen mensual": promedio, cambio neto en el mes, máximo/mínimo con fecha, días registrados sobre días del mes, y comparación contra el promedio del mes anterior. Está atado al mismo `viewMonth` que el calendario — navegar el calendario también actualiza este resumen.
+- Panel "Actividad reciente" (colapsado, al final de la página): últimas 20 altas/ediciones/bajas de registros de peso, con timestamp.
 
 ## Stack y por qué
 
@@ -35,11 +40,12 @@ registro-peso/
 │   ├── derived.js                # cálculos: tendencia, racha, min/max, promedios semanales, regresión lineal
 │   ├── chart.js                   # dibuja los gráficos SVG a mano (sin librería de charts)
 │   ├── chart-modal.js              # pestañas semanal/diario + modal de gráfico ampliado
-│   ├── render.js                    # pinta stats, calendario, notas, lista de registros
-│   ├── modal.js                      # modal de vista (solo lectura) + modal de edición/alta
-│   ├── auth.js                        # login/logout, chequeo de sesión al cargar
-│   ├── theme.js                        # toggle claro/oscuro, iconos SVG inline
-│   └── main.js                         # wiring de todos los event listeners + arranque
+│   ├── render.js                    # pinta stats, calendario, resumen mensual, notas, registros, meta, actividad
+│   ├── modal.js                      # modal de vista (solo lectura) + modal de edición/alta de un registro de peso
+│   ├── goal.js                        # modal de meta/fase (abrir, cerrar, guardar, quitar)
+│   ├── auth.js                         # login/logout, chequeo de sesión al cargar
+│   ├── theme.js                         # toggle claro/oscuro, iconos SVG inline
+│   └── main.js                          # wiring de todos los event listeners + arranque
 └── supabase/
     └── migrations/                     # SQL versionado de la base (ver sección Supabase)
 ```
@@ -57,8 +63,11 @@ python3 -m http.server 8000
 - **Proyecto**: `registro-peso`, ref `ogqbvooefjojaovxhhcx`, región `sa-east-1`.
 - **Organización**: `Broyi Personal`, id `mtfgkmyeuxlhxsizsykj`.
 - **URL**: `https://ogqbvooefjojaovxhhcx.supabase.co` (hardcodeada en `js/config.js` junto con la `anon key` — ambas son seguras de exponer en el cliente, la seguridad real la da Row Level Security).
-- **Tabla**: `public.weight_entries` — columnas `user_id` (default `auth.uid()`), `date`, `weight`, `note`, `updated_at`; PK compuesta `(user_id, date)`.
-- **RLS**: activado, con policies de select/insert/update/delete que sólo permiten `auth.uid() = user_id`. Cada usuario (en la práctica, uno solo) ve y edita únicamente sus propias filas.
+- **Tablas** (todas con RLS activado, policies restringidas a `auth.uid() = user_id`, `user_id` con default `auth.uid()`):
+  - `public.weight_entries` — el registro de peso en sí. Columnas `date`, `weight`, `note`, `updated_at`; PK compuesta `(user_id, date)`. Full CRUD desde el cliente.
+  - `public.weight_entries_log` — historial inmutable de altas/ediciones/bajas de `weight_entries`, para el panel "Actividad reciente". Columnas `entry_date`, `action` (`created`/`updated`/`deleted`), `previous_weight`, `previous_note`, `new_weight`, `new_note`, `changed_at`. Solo `select` + `insert` desde el cliente (nunca update/delete) — se inserta una fila nueva en cada guardado/borrado de `modal.js`, nunca se modifica una existente.
+  - `public.weight_goals` — historial inmutable de metas/fases, para el panel "Meta y objetivo". Columnas `target_weight` (nullable), `phase` (nullable, check `volumen`/`definicion`/`mantenimiento`), `created_at`. Igual que el log de arriba: solo `select` + `insert`, nunca se actualiza una fila — la meta "actual" es simplemente la fila más reciente (`order by created_at desc limit 1`). Guardar una meta nueva, cambiar de fase, o "quitar la meta" son todas la misma operación: insertar una fila nueva (con `target_weight`/`phase` en `null` para "sin meta"/"sin fase"). Esto preserva el historial completo de cómo fue cambiando el objetivo a lo largo del tiempo sin necesitar una tabla separada de auditoría.
+- **RLS**: cada usuario (en la práctica, uno solo) ve y edita únicamente sus propias filas.
 - **Auth**: email/password. **El registro público está desactivado** (`disable_signup: true` vía Management API) para que nadie pueda crearse una cuenta nueva y ver la data. Existe un único usuario: `nicolasbroyad@gmail.com`. La contraseña no está guardada en ningún archivo del repo por seguridad — si hace falta cambiarla, se puede resetear desde el dashboard de Supabase (Authentication → Users) o pedirle al usuario que la comparta en el chat para actualizarla vía Admin API.
 
 ### CLI de Supabase
@@ -127,6 +136,12 @@ No hay suite de tests. La verificación se hizo así, y conviene seguir el mismo
 4. Las capturas y servidores de prueba se guardan/limpian en el directorio scratchpad de la sesión, nunca en el repo.
 
 Las credenciales de login (`nicolasbroyad@gmail.com` + contraseña) las tiene el usuario; pedírselas en el chat si hace falta un test end-to-end con sesión real.
+
+**Importante**: no hay entorno de test separado — la app apunta siempre a la base de Supabase real de producción, incluso al probar localmente. Cualquier dato que se cree durante una prueba end-to-end (registros de peso, metas, etc.) queda guardado de verdad. Después de probar, borrar lo que se haya creado como parte del test (vía REST API con la `service_role` key, o desde la UI) para no dejar basura en el historial real del usuario. Ya pasó más de una vez en esta sesión (entradas de prueba en fechas sin dato real, una meta de prueba) y hubo que limpiarlas a mano.
+
+## Gotchas encontrados
+
+- **No usar `<input type="number">` para el peso.** Si el usuario tipea con coma decimal (común en teclado en español, ej. "70,5"), el navegador invalida el input y `.value` devuelve `""` silenciosamente — el JS nunca ve un error, simplemente el peso queda vacío y falla la validación con un mensaje que no explica la causa real. Se cambió a `<input type="text" inputmode="decimal">` + `.replace(',', '.')` antes de `parseFloat` en todos los inputs de peso (carga de registro y meta). Si se agrega algún input numérico nuevo, replicar este patrón, no usar `type="number"`.
 
 ## Cosas a tener en cuenta / posibles próximos pasos
 
