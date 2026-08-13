@@ -16,6 +16,9 @@ Este archivo existe para que una sesión nueva de Claude Code pueda retomar el t
 - Panel "Meta y objetivo": meta de peso opcional + fase (volumen/definición/mantenimiento/sin definir), editable o borrable en cualquier momento, con historial de cambios colapsado.
 - Panel "Resumen mensual": promedio, cambio neto en el mes, máximo/mínimo con fecha, días registrados sobre días del mes, y comparación contra el promedio del mes anterior. Está atado al mismo `viewMonth` que el calendario — navegar el calendario también actualiza este resumen.
 - Panel "Actividad reciente" (colapsado, al final de la página): últimas 20 altas/ediciones/bajas de registros de peso, con timestamp.
+- Selector de rango temporal en el gráfico semanal (último mes/3 meses/6 meses/año/toda la historia), sincronizado entre el panel chico y el modal ampliado. Solo visible en modo "Semanal" (se oculta en "Diario", que siempre muestra todo el historial con scroll horizontal).
+- Instalable como PWA (agregar a pantalla de inicio en el celu, ícono propio, abre sin barra de navegador) y con caché offline básico de los archivos propios de la app.
+- Botón para exportar todo el historial a CSV (fecha, peso, nota), junto al contador de "Registros".
 
 ## Stack y por qué
 
@@ -29,22 +32,26 @@ Este archivo existe para que una sesión nueva de Claude Code pueda retomar el t
 ```
 registro-peso/
 ├── index.html              # markup, sin lógica
+├── manifest.json           # manifest de la PWA (nombre, íconos, colores, display:standalone)
+├── sw.js                   # service worker: cache-first de los assets propios, passthrough para Supabase/CDN
+├── icons/                  # íconos de la PWA (192/512/apple-touch/favicon), generados desde un SVG propio
 ├── css/
 │   └── styles.css          # todos los estilos (incluye paleta clara/oscura)
 ├── js/
 │   ├── config.js            # cliente Supabase (URL + anon key, ambas públicas por diseño)
 │   ├── seed-data.js          # historial importado del excel original, para sembrar la DB la primera vez
-│   ├── state.js               # estado compartido (entries, viewMonth, activeTab, etc.) con setters porque son ES modules
-│   ├── utils.js                # fechas, formato, toasts, escapeHtml
+│   ├── state.js               # estado compartido (entries, viewMonth, activeTab, chartRange, etc.) con setters porque son ES modules
+│   ├── utils.js                # fechas, formato, toasts, escapeHtml, íconos SVG de tendencia
 │   ├── storage.js               # capa de datos: loadEntries/upsertEntry/deleteEntryByDate contra Supabase
-│   ├── derived.js                # cálculos: tendencia, racha, min/max, promedios semanales, regresión lineal
-│   ├── chart.js                   # dibuja los gráficos SVG a mano (sin librería de charts)
-│   ├── chart-modal.js              # pestañas semanal/diario + modal de gráfico ampliado
+│   ├── derived.js                # cálculos: tendencia, racha, min/max, promedios semanales, resumen mensual, regresión lineal
+│   ├── chart.js                   # dibuja los gráficos SVG a mano (sin librería de charts); aplica el filtro de rango en modo semanal
+│   ├── chart-modal.js              # pestañas semanal/diario, selector de rango, modal de gráfico ampliado
 │   ├── render.js                    # pinta stats, calendario, resumen mensual, notas, registros, meta, actividad
 │   ├── modal.js                      # modal de vista (solo lectura) + modal de edición/alta de un registro de peso
 │   ├── goal.js                        # modal de meta/fase (abrir, cerrar, guardar, quitar)
 │   ├── auth.js                         # login/logout, chequeo de sesión al cargar
 │   ├── theme.js                         # toggle claro/oscuro, iconos SVG inline
+│   ├── export.js                        # exportar todo el historial a CSV
 │   └── main.js                          # wiring de todos los event listeners + arranque
 └── supabase/
     └── migrations/                     # SQL versionado de la base (ver sección Supabase)
@@ -57,6 +64,13 @@ cd /home/nicobroyad/repos/registro-peso
 python3 -m http.server 8000
 # abrir http://localhost:8000/
 ```
+
+## PWA
+
+- `manifest.json` + `sw.js` + `icons/` hacen que el navegador ofrezca "Agregar a pantalla de inicio" (Android/Chrome muestra el prompt automático si el manifest y el service worker son válidos; iOS/Safari lo permite desde el menú Compartir igual, sin necesitar el service worker).
+- Los íconos (`icons/icon-192.png`, `icons/icon-512.png`, `icons/apple-touch-icon.png`, `icons/favicon-32.png`) se generaron rasterizando un SVG propio (un ícono simple de balanza, paleta del `card-lcd`) con capturas de Chrome headless a distintos tamaños de ventana — no hay ImageMagick/rsvg-convert instalado en este entorno. Si hay que regenerarlos, el patrón es: escribir el SVG en un HTML mínimo, `google-chrome --headless --screenshot=salida.png --window-size=WxH archivo.html`.
+- `sw.js` cachea (cache-first, con actualización en segundo plano) únicamente los archivos de mismo origen listados en `ASSETS` — si se agrega un archivo `.js` nuevo a `js/`, hay que sumarlo a esa lista y **subir el número de `CACHE_NAME`** (ej. `registro-peso-v2`) para que los navegadores con el service worker viejo lo reemplacen; si no, algunos usuarios pueden quedar viendo una versión cacheada vieja hasta que limpien el cache a mano.
+- Las llamadas a Supabase y al CDN de `supabase-js` (otro origen) pasan de largo por el service worker sin cachearse — nunca deberían quedar servidas desde caché.
 
 ## Supabase
 
