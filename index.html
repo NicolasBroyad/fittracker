@@ -342,7 +342,7 @@
     <div class="goal-label">Historial</div>
     <div class="activity-list session-history" id="session-history"></div>
     <div class="session-today">
-      <div class="goal-label">Hoy</div>
+      <div class="goal-label" id="session-today-label">Hoy</div>
       <div class="session-sets" id="session-sets"></div>
       <button class="btn-expand session-add-set" id="session-add-set">+ agregar serie</button>
     </div>
@@ -350,6 +350,24 @@
       <button class="btn btn-cancel" id="session-modal-close">Cerrar</button>
       <button class="btn btn-save" id="session-modal-save">Guardar</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="exercise-cal-modal-overlay">
+  <div class="modal">
+    <div class="view-modal-head">
+      <div>
+        <h3 id="exercise-cal-title">Calendario</h3>
+      </div>
+      <button class="btn-expand" id="exercise-cal-close" title="Cerrar">✕</button>
+    </div>
+    <div class="cal-nav" style="justify-content:center; margin:12px 0 6px;">
+      <button id="exercise-cal-prev">‹</button>
+      <div class="cal-month-label" id="exercise-cal-month-label"></div>
+      <button id="exercise-cal-next">›</button>
+    </div>
+    <div class="cal-grid" id="exercise-cal-dow-row"></div>
+    <div class="cal-grid" id="exercise-cal-grid" style="margin-top:4px;"></div>
   </div>
 </div>
 
