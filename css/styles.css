@@ -61,6 +61,7 @@
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
+.hidden{ display:none; }
 body{
   background:var(--paper);
   background-image:
@@ -520,6 +521,66 @@ body{
 .btn-cancel:hover{ background:var(--paper-deep); }
 .btn-delete{ background:transparent; color:var(--loss); border:1px solid var(--loss-soft); flex:0 0 auto; padding:11px 16px; }
 .btn-delete:hover{ background:var(--loss-soft); }
+
+/* ---------- Top-level screen tabs ---------- */
+.app-tabs{ display:flex; justify-content:center; margin:6px 0 18px; }
+
+/* ---------- Rutina screen ---------- */
+.routine-days{
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(320px, 1fr));
+  gap:14px;
+}
+.routine-day-panel{ margin-top:0; }
+.routine-day-name{ font-weight:400; color:var(--ink-soft); font-size:0.95rem; }
+.exercise-list{ display:flex; flex-direction:column; }
+.exercise-row{
+  padding:10px 6px; border-radius:8px; cursor:pointer;
+}
+.exercise-row:hover{ background:var(--paper-deep); }
+.exercise-row + .exercise-row{ border-top:1px dashed var(--line); }
+.ex-main{ display:flex; justify-content:space-between; align-items:baseline; gap:10px; }
+.ex-name{ font-size:0.88rem; font-weight:600; color:var(--ink); }
+.ex-target{ font-family:'JetBrains Mono', monospace; font-size:0.74rem; color:var(--ink-faint); flex:0 0 auto; }
+.ex-last{ display:block; font-family:'JetBrains Mono', monospace; font-size:0.74rem; color:var(--accent); margin-top:3px; }
+.ex-last.empty{ color:var(--ink-faint); font-family:'Inter',sans-serif; font-style:italic; }
+.ex-last-date{ color:var(--ink-faint); font-family:'Inter',sans-serif; font-style:italic; }
+.btn-add-exercise{
+  margin-top:12px; width:100%; border:1px dashed var(--line-strong); background:transparent;
+  border-radius:var(--radius-sm); padding:9px; font-size:0.78rem; font-weight:600;
+  color:var(--ink-soft); cursor:pointer; font-family:'Inter',sans-serif;
+}
+.btn-add-exercise:hover{ background:var(--accent-soft); color:var(--ink); border-color:var(--accent); }
+
+/* field-row (dos campos lado a lado en un modal) */
+.field-row{ display:flex; gap:12px; }
+.field-row .field{ flex:1; }
+
+/* session modal */
+.session-modal{ max-width:420px; }
+.session-history{ max-height:180px; }
+.session-history-item{ position:relative; padding-right:26px; }
+.session-history-remove{
+  position:absolute; right:0; top:8px; border:none; background:transparent;
+  color:var(--ink-faint); cursor:pointer; font-size:0.72rem; padding:2px 4px;
+}
+.session-history-remove:hover{ color:var(--loss); }
+.session-today{ margin-top:16px; }
+.session-sets{ display:flex; flex-direction:column; gap:8px; margin-bottom:10px; }
+.session-set-row{ display:flex; align-items:center; gap:8px; }
+.session-set-row input{
+  flex:1; min-width:0; border:1px solid var(--line-strong); background:var(--paper);
+  border-radius:var(--radius-sm); padding:9px 10px; font-family:'JetBrains Mono', monospace;
+  font-size:0.9rem; color:var(--ink);
+}
+.session-set-row input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
+.session-set-x{ color:var(--ink-faint); font-size:0.85rem; flex:0 0 auto; }
+.session-set-remove{
+  border:none; background:transparent; color:var(--ink-faint); cursor:pointer;
+  font-size:0.85rem; padding:4px 6px; flex:0 0 auto;
+}
+.session-set-remove:hover{ color:var(--loss); }
+.session-add-set{ width:100%; border-radius:var(--radius-sm); font-size:0.76rem; }
 
 .toast{
   position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);

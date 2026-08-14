@@ -59,6 +59,14 @@
     </div>
   </div>
 
+  <div class="app-tabs">
+    <div class="tabs" id="screen-tabs">
+      <button id="tab-screen-peso" class="active">Peso</button>
+      <button id="tab-screen-rutina">Rutina</button>
+    </div>
+  </div>
+
+  <div id="screen-peso">
   <div class="stats-row">
     <div class="card card-lcd">
       <div class="label">Peso actual</div>
@@ -182,6 +190,11 @@
     <summary>Actividad reciente (creados, editados, eliminados)</summary>
     <div class="activity-list" id="activity-list"></div>
   </details>
+  </div>
+
+  <div id="screen-rutina" class="hidden">
+    <div class="routine-days" id="routine-days-container"></div>
+  </div>
 
 </div>
 
@@ -270,6 +283,72 @@
       <button class="btn btn-delete" id="btn-goal-clear">Quitar meta</button>
       <button class="btn btn-cancel" id="goal-modal-cancel">Cancelar</button>
       <button class="btn btn-save" id="goal-modal-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="day-modal-overlay">
+  <div class="modal">
+    <h3>Nombre del entrenamiento</h3>
+    <div class="modal-date" id="day-modal-label"></div>
+    <div class="field">
+      <label for="day-input-name">Nombre</label>
+      <input type="text" id="day-input-name" autocomplete="off" placeholder="Push 1">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="day-modal-cancel">Cancelar</button>
+      <button class="btn btn-save" id="day-modal-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="exercise-modal-overlay">
+  <div class="modal">
+    <h3 id="exercise-modal-title">Nuevo ejercicio</h3>
+    <div class="modal-date" id="exercise-modal-day-label"></div>
+    <div class="field">
+      <label for="exercise-input-name">Ejercicio</label>
+      <input type="text" id="exercise-input-name" autocomplete="off" placeholder="Press banca">
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <label for="exercise-input-sets">Series</label>
+        <input type="text" id="exercise-input-sets" inputmode="numeric" autocomplete="off" placeholder="4">
+      </div>
+      <div class="field">
+        <label for="exercise-input-reps">Repeticiones</label>
+        <input type="text" id="exercise-input-reps" autocomplete="off" placeholder="6-8">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-delete hidden" id="exercise-modal-delete">Borrar</button>
+      <button class="btn btn-cancel" id="exercise-modal-cancel">Cancelar</button>
+      <button class="btn btn-save" id="exercise-modal-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="session-modal-overlay">
+  <div class="modal session-modal">
+    <div class="view-modal-head">
+      <div>
+        <h3 id="session-modal-title">Ejercicio</h3>
+        <div class="modal-date" id="session-modal-target"></div>
+      </div>
+      <button class="btn-expand" id="session-modal-edit-exercise" title="Editar objetivo">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>
+      </button>
+    </div>
+    <div class="goal-label">Historial</div>
+    <div class="activity-list session-history" id="session-history"></div>
+    <div class="session-today">
+      <div class="goal-label">Hoy</div>
+      <div class="session-sets" id="session-sets"></div>
+      <button class="btn-expand session-add-set" id="session-add-set">+ agregar serie</button>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="session-modal-close">Cerrar</button>
+      <button class="btn btn-save" id="session-modal-save">Guardar</button>
     </div>
   </div>
 </div>

@@ -1,0 +1,254 @@
+import {
+  DAY_NAMES, routineDays, routineExercises, setRoutineDays, setRoutineExercises,
+  activeScreen, setActiveScreenState, editingDay, setEditingDay,
+  editingExercise, setEditingExercise, sessionExercise, setSessionExercise,
+  sessionSetRows, setSessionSetRows,
+} from './routines-state.js';
+import {
+  loadRoutineDays, loadRoutineExercises, saveRoutineDayName,
+  createExercise, updateExercise, deleteExercise,
+  loadExerciseLogs, saveSets, deleteSessionLogs,
+} from './routines-storage.js';
+import { renderRoutines } from './routines-render.js';
+import { groupLogsBySession, formatSessionSets } from './routines-derived.js';
+import { showToast, escapeHtml, todayISO, fromISO, fmtShort } from './utils.js';
+
+const SCREEN_STORAGE_KEY = 'broyi_peso_screen';
+let routinesLoaded = false;
+
+export function initScreenSwitch(){
+  let saved = 'peso';
+  try{ saved = localStorage.getItem(SCREEN_STORAGE_KEY) || 'peso'; }catch(e){}
+  switchScreen(saved);
+}
+
+export async function switchScreen(screen){
+  setActiveScreenState(screen);
+  document.getElementById('screen-peso').classList.toggle('hidden', screen !== 'peso');
+  document.getElementById('screen-rutina').classList.toggle('hidden', screen !== 'rutina');
+  document.getElementById('tab-screen-peso').classList.toggle('active', screen === 'peso');
+  document.getElementById('tab-screen-rutina').classList.toggle('active', screen === 'rutina');
+  try{ localStorage.setItem(SCREEN_STORAGE_KEY, screen); }catch(e){}
+  if(screen === 'rutina' && !routinesLoaded){
+    routinesLoaded = true;
+    await loadRoutines();
+  }
+}
+
+export async function loadRoutines(){
+  const [days, exercises] = await Promise.all([loadRoutineDays(), loadRoutineExercises()]);
+  setRoutineDays(days);
+  setRoutineExercises(exercises);
+  await renderRoutines();
+}
+
+// ---------- Modal: nombre del día ----------
+
+export function openDayNameModal(dayOfWeek){
+  setEditingDay(dayOfWeek);
+  document.getElementById('day-modal-label').textContent = DAY_NAMES[dayOfWeek-1];
+  document.getElementById('day-input-name').value = (routineDays[dayOfWeek] && routineDays[dayOfWeek].name) || '';
+  document.getElementById('day-modal-overlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('day-input-name').focus(), 50);
+}
+export function closeDayNameModal(){
+  document.getElementById('day-modal-overlay').classList.add('hidden');
+  setEditingDay(null);
+}
+export async function saveDayName(){
+  const name = document.getElementById('day-input-name').value.trim();
+  const { error } = await saveRoutineDayName(editingDay, name);
+  if(error){ console.error(error); showToast('No se pudo guardar'); return; }
+  routineDays[editingDay] = { name };
+  closeDayNameModal();
+  await renderRoutines();
+  showToast('Guardado');
+}
+
+// ---------- Modal: ejercicio (alta/edición/borrado) ----------
+
+export function openExerciseModal(dayOfWeek, exercise){
+  setEditingExercise({ dayOfWeek, exercise: exercise || null });
+  document.getElementById('exercise-modal-title').textContent = exercise ? 'Editar ejercicio' : 'Nuevo ejercicio';
+  document.getElementById('exercise-modal-day-label').textContent = DAY_NAMES[dayOfWeek-1];
+  document.getElementById('exercise-input-name').value = exercise ? exercise.name : '';
+  document.getElementById('exercise-input-sets').value = exercise && exercise.sets_target != null ? exercise.sets_target : '';
+  document.getElementById('exercise-input-reps').value = exercise && exercise.reps_target ? exercise.reps_target : '';
+  document.getElementById('exercise-modal-delete').classList.toggle('hidden', !exercise);
+  document.getElementById('exercise-modal-overlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('exercise-input-name').focus(), 50);
+}
+export function closeExerciseModal(){
+  document.getElementById('exercise-modal-overlay').classList.add('hidden');
+  setEditingExercise(null);
+}
+export async function saveExerciseModal(){
+  const name = document.getElementById('exercise-input-name').value.trim();
+  if(name === ''){ showToast('Ingresá un nombre para el ejercicio'); return; }
+  const setsRaw = document.getElementById('exercise-input-sets').value.trim();
+  const setsTarget = setsRaw === '' ? null : parseInt(setsRaw, 10);
+  if(setsRaw !== '' && (isNaN(setsTarget) || setsTarget <= 0)){ showToast('Series inválidas'); return; }
+  const repsTarget = document.getElementById('exercise-input-reps').value.trim() || null;
+
+  const { dayOfWeek, exercise } = editingExercise;
+  if(exercise){
+    const { error } = await updateExercise(exercise.id, name, setsTarget, repsTarget);
+    if(error){ console.error(error); showToast('No se pudo guardar'); return; }
+    Object.assign(exercise, { name, sets_target: setsTarget, reps_target: repsTarget });
+  } else {
+    const existing = routineExercises[dayOfWeek] || [];
+    const orderIndex = existing.length;
+    const { data, error } = await createExercise(dayOfWeek, name, setsTarget, repsTarget, orderIndex);
+    if(error){ console.error(error); showToast('No se pudo crear el ejercicio'); return; }
+    if(!routineExercises[dayOfWeek]) routineExercises[dayOfWeek] = [];
+    routineExercises[dayOfWeek].push(data);
+  }
+  closeExerciseModal();
+  await renderRoutines();
+  showToast('Guardado');
+}
+export async function deleteExerciseModal(){
+  const { dayOfWeek, exercise } = editingExercise;
+  if(!exercise) return;
+  const { error } = await deleteExercise(exercise.id);
+  if(error){ console.error(error); showToast('No se pudo borrar'); return; }
+  routineExercises[dayOfWeek] = (routineExercises[dayOfWeek] || []).filter(e => e.id !== exercise.id);
+  closeExerciseModal();
+  await renderRoutines();
+  showToast('Ejercicio eliminado');
+}
+
+// ---------- Modal: registrar sesión ----------
+
+function findExercise(id){
+  for(const day of Object.keys(routineExercises)){
+    const found = (routineExercises[day] || []).find(e => e.id === id);
+    if(found) return { dayOfWeek: Number(day), exercise: found };
+  }
+  return null;
+}
+
+export async function openSessionModal(exerciseId){
+  const found = findExercise(exerciseId);
+  if(!found) return;
+  setSessionExercise(found.exercise);
+  const target = (found.exercise.sets_target != null ? found.exercise.sets_target : '—')+'x'+(found.exercise.reps_target || '—');
+  document.getElementById('session-modal-title').textContent = found.exercise.name;
+  document.getElementById('session-modal-target').textContent = target;
+  document.getElementById('session-modal-overlay').classList.remove('hidden');
+
+  const historyEl = document.getElementById('session-history');
+  historyEl.innerHTML = '<div class="empty-state">Cargando...</div>';
+  const logs = await loadExerciseLogs(exerciseId);
+  const sessions = groupLogsBySession(logs);
+  if(sessions.length === 0){
+    historyEl.innerHTML = '<div class="empty-state">Sin sesiones registradas todavía.</div>';
+  } else {
+    historyEl.innerHTML = sessions.map(s => `<div class="activity-item session-history-item" data-date="${s.date}">
+      <span class="act-date">${fmtShort(fromISO(s.date))}</span>
+      <span class="act-detail">${escapeHtml(formatSessionSets(s.sets))}</span>
+      <button class="session-history-remove" data-date="${s.date}" title="Borrar sesión">✕</button>
+    </div>`).join('');
+  }
+
+  const todaysSession = sessions.find(s => s.date === todayISO());
+  setSessionSetRows(todaysSession
+    ? []
+    : (sessions[0] ? sessions[0].sets.map(s => ({ weight: s.weight, reps: '' })) : [{ weight: '', reps: '' }]));
+  renderSessionSetRows();
+}
+export function closeSessionModal(){
+  document.getElementById('session-modal-overlay').classList.add('hidden');
+  setSessionExercise(null);
+  setSessionSetRows([]);
+}
+
+export function renderSessionSetRows(){
+  const container = document.getElementById('session-sets');
+  container.innerHTML = sessionSetRows.map((row, i) => `<div class="session-set-row" data-idx="${i}">
+    <input type="text" inputmode="decimal" class="session-set-weight" data-idx="${i}" placeholder="kg" value="${row.weight ?? ''}">
+    <span class="session-set-x">×</span>
+    <input type="text" inputmode="numeric" class="session-set-reps" data-idx="${i}" placeholder="reps" value="${row.reps ?? ''}">
+    <button class="session-set-remove" data-idx="${i}" title="Quitar">✕</button>
+  </div>`).join('');
+}
+export function addSessionSetRow(){
+  const last = sessionSetRows[sessionSetRows.length-1];
+  sessionSetRows.push({ weight: last ? last.weight : '', reps: '' });
+  renderSessionSetRows();
+}
+export function removeSessionSetRow(idx){
+  sessionSetRows.splice(idx, 1);
+  renderSessionSetRows();
+}
+export function updateSessionSetField(idx, field, value){
+  if(!sessionSetRows[idx]) return;
+  sessionSetRows[idx][field] = value;
+}
+
+export async function saveSession(){
+  if(!sessionExercise) return;
+  const rows = sessionSetRows
+    .map(r => ({
+      weight: String(r.weight).trim() === '' ? null : parseFloat(String(r.weight).trim().replace(',', '.')),
+      reps: String(r.reps).trim() === '' ? null : parseInt(String(r.reps).trim(), 10),
+    }))
+    .filter(r => r.weight != null || r.reps != null);
+  if(rows.length === 0){ showToast('Cargá al menos una serie'); return; }
+
+  const logs = await loadExerciseLogs(sessionExercise.id);
+  const today = todayISO();
+  const existingToday = logs.filter(l => l.session_date === today);
+  const startSetNumber = existingToday.length + 1;
+
+  const { error } = await saveSets(sessionExercise.id, today, startSetNumber, rows);
+  if(error){ console.error(error); showToast('No se pudo guardar'); return; }
+  closeSessionModal();
+  await renderRoutines();
+  showToast('Sesión guardada');
+}
+
+export async function deleteSessionHistoryEntry(exerciseId, date){
+  const { error } = await deleteSessionLogs(exerciseId, date);
+  if(error){ console.error(error); showToast('No se pudo borrar'); return; }
+  showToast('Sesión eliminada');
+  await openSessionModal(exerciseId);
+  await renderRoutines();
+}
+
+// ---------- Delegación de clicks sobre el contenido dinámico ----------
+
+export function wireRoutinesDelegation(){
+  document.getElementById('routine-days-container').addEventListener('click', (e)=>{
+    const editBtn = e.target.closest('.routine-day-edit');
+    if(editBtn){ openDayNameModal(Number(editBtn.dataset.day)); return; }
+    const addBtn = e.target.closest('.btn-add-exercise');
+    if(addBtn){ openExerciseModal(Number(addBtn.dataset.day), null); return; }
+    const row = e.target.closest('.exercise-row');
+    if(row){ openSessionModal(row.dataset.id); return; }
+  });
+
+  document.getElementById('session-modal-edit-exercise').addEventListener('click', ()=>{
+    if(!sessionExercise) return;
+    const found = findExercise(sessionExercise.id);
+    if(!found) return;
+    closeSessionModal();
+    openExerciseModal(found.dayOfWeek, found.exercise);
+  });
+
+  document.getElementById('session-add-set').addEventListener('click', addSessionSetRow);
+  document.getElementById('session-sets').addEventListener('click', (e)=>{
+    const removeBtn = e.target.closest('.session-set-remove');
+    if(removeBtn) removeSessionSetRow(Number(removeBtn.dataset.idx));
+  });
+  document.getElementById('session-sets').addEventListener('input', (e)=>{
+    const idx = e.target.dataset.idx;
+    if(idx == null) return;
+    if(e.target.classList.contains('session-set-weight')) updateSessionSetField(Number(idx), 'weight', e.target.value);
+    if(e.target.classList.contains('session-set-reps')) updateSessionSetField(Number(idx), 'reps', e.target.value);
+  });
+  document.getElementById('session-history').addEventListener('click', (e)=>{
+    const removeBtn = e.target.closest('.session-history-remove');
+    if(removeBtn && sessionExercise) deleteSessionHistoryEntry(sessionExercise.id, removeBtn.dataset.date);
+  });
+}

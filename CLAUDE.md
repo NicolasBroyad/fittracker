@@ -19,6 +19,7 @@ Este archivo existe para que una sesión nueva de Claude Code pueda retomar el t
 - Selector de rango temporal en el gráfico semanal (último mes/3 meses/6 meses/año/toda la historia), sincronizado entre el panel chico y el modal ampliado. Solo visible en modo "Semanal" (se oculta en "Diario", que siempre muestra todo el historial con scroll horizontal).
 - Instalable como PWA (agregar a pantalla de inicio en el celu, ícono propio, abre sin barra de navegador) y con caché offline básico de los archivos propios de la app.
 - Botón para exportar todo el historial a CSV (fecha, peso, nota), junto al contador de "Registros".
+- Segunda pantalla ("Rutina", tab-switcher junto al de "Peso" en la parte superior) con la rutina de gimnasio del usuario: una tarjeta por día de la semana (lunes a domingo, fijo), cada una con nombre editable del entrenamiento (ej. "Push 1") y su lista de ejercicios. Cada ejercicio tiene series/reps objetivo (ej. "4x6-8") y, al tocarlo, abre un modal con el historial de sesiones anteriores (agrupado por fecha, formateado como "85kg x 6, 80kg x 8-7-6") y un formulario para cargar las series de hoy (peso + reps por set, con "+ agregar serie"). Pensada para reemplazar las notas del celular donde el usuario llevaba esto antes. Se elige y persiste la última pantalla vista (`localStorage`), igual criterio que el tema.
 
 ## Stack y por qué
 
@@ -52,6 +53,11 @@ registro-peso/
 │   ├── auth.js                         # login/logout, chequeo de sesión al cargar
 │   ├── theme.js                         # toggle claro/oscuro, iconos SVG inline
 │   ├── export.js                        # exportar todo el historial a CSV
+│   ├── routines-state.js                # estado de la pantalla de Rutina (días, ejercicios, modales abiertos)
+│   ├── routines-storage.js              # capa de datos de rutinas: routine_days/routine_exercises/routine_logs contra Supabase
+│   ├── routines-derived.js              # agrupa sets de routine_logs por sesión y los formatea ("85kg x 6, 80kg x 8-7-6")
+│   ├── routines-render.js               # pinta las 7 tarjetas de día con sus ejercicios y el último registro de cada uno
+│   ├── routines.js                      # lógica de la pantalla de Rutina: switch de pantalla, modales (día/ejercicio/sesión), delegación de eventos
 │   └── main.js                          # wiring de todos los event listeners + arranque
 └── supabase/
     └── migrations/                     # SQL versionado de la base (ver sección Supabase)
@@ -81,6 +87,9 @@ python3 -m http.server 8000
   - `public.weight_entries` — el registro de peso en sí. Columnas `date`, `weight`, `note`, `updated_at`; PK compuesta `(user_id, date)`. Full CRUD desde el cliente.
   - `public.weight_entries_log` — historial inmutable de altas/ediciones/bajas de `weight_entries`, para el panel "Actividad reciente". Columnas `entry_date`, `action` (`created`/`updated`/`deleted`), `previous_weight`, `previous_note`, `new_weight`, `new_note`, `changed_at`. Solo `select` + `insert` desde el cliente (nunca update/delete) — se inserta una fila nueva en cada guardado/borrado de `modal.js`, nunca se modifica una existente.
   - `public.weight_goals` — historial inmutable de metas/fases, para el panel "Meta y objetivo". Columnas `target_weight` (nullable), `phase` (nullable, check `volumen`/`definicion`/`mantenimiento`), `created_at`. Igual que el log de arriba: solo `select` + `insert`, nunca se actualiza una fila — la meta "actual" es simplemente la fila más reciente (`order by created_at desc limit 1`). Guardar una meta nueva, cambiar de fase, o "quitar la meta" son todas la misma operación: insertar una fila nueva (con `target_weight`/`phase` en `null` para "sin meta"/"sin fase"). Esto preserva el historial completo de cómo fue cambiando el objetivo a lo largo del tiempo sin necesitar una tabla separada de auditoría.
+  - `public.routine_days` — nombre del entrenamiento de cada día de la semana (ej. lunes → "Push 1"). PK compuesta `(user_id, day_of_week)`, `day_of_week` 1=lunes..7=domingo. A diferencia de `weight_goals`/`weight_entries_log`, acá SÍ hay `update` directo (upsert por `day_of_week`) porque es solo una etiqueta editable, no necesita auditoría.
+  - `public.routine_exercises` — la "plantilla" de ejercicios de cada día: `day_of_week`, `name`, `sets_target` (número, nullable), `reps_target` (texto libre, ej. "6-8", nullable), `order_index`. Full CRUD desde el cliente (crear/editar/borrar un ejercicio). Borrar un ejercicio borra en cascada (`on delete cascade`) sus `routine_logs`.
+  - `public.routine_logs` — cada serie (set) realizada en una sesión de entrenamiento: `exercise_id` (FK a `routine_exercises`), `session_date`, `set_number`, `weight`, `reps`. Un registro por set (no por sesión completa) — esto es deliberado: permite mostrar el historial agrupado por fecha (ver `js/routines-derived.js`) y deja la puerta abierta a gráficos de progreso por ejercicio más adelante sin tener que migrar datos. Full CRUD desde el cliente.
 - **RLS**: cada usuario (en la práctica, uno solo) ve y edita únicamente sus propias filas.
 - **Auth**: email/password. **El registro público está desactivado** (`disable_signup: true` vía Management API) para que nadie pueda crearse una cuenta nueva y ver la data. Existe un único usuario: `nicolasbroyad@gmail.com`. La contraseña no está guardada en ningún archivo del repo por seguridad — si hace falta cambiarla, se puede resetear desde el dashboard de Supabase (Authentication → Users) o pedirle al usuario que la comparta en el chat para actualizarla vía Admin API.
 
@@ -156,6 +165,7 @@ Las credenciales de login (`nicolasbroyad@gmail.com` + contraseña) las tiene el
 ## Gotchas encontrados
 
 - **No usar `<input type="number">` para el peso.** Si el usuario tipea con coma decimal (común en teclado en español, ej. "70,5"), el navegador invalida el input y `.value` devuelve `""` silenciosamente — el JS nunca ve un error, simplemente el peso queda vacío y falla la validación con un mensaje que no explica la causa real. Se cambió a `<input type="text" inputmode="decimal">` + `.replace(',', '.')` antes de `parseFloat` en todos los inputs de peso (carga de registro y meta). Si se agrega algún input numérico nuevo, replicar este patrón, no usar `type="number"`.
+- **La clase `.hidden` no es genérica en `css/styles.css`** — hasta ahora cada uso estaba scoped a su propio selector (`.modal-overlay.hidden`, `.chart-range-row.hidden`, `.login-screen.hidden`, `.app.hidden`), así que agregar `class="... hidden"` a un elemento nuevo sin ese selector específico no lo ocultaba (se descubrió al implementar el toggle de pantallas Peso/Rutina, y de paso se encontró que el botón "Borrar" del modal de peso tenía el mismo problema). Se agregó una regla genérica `.hidden{ display:none; }` al principio de `styles.css` que cubre cualquier uso nuevo; las reglas específicas viejas quedaron como estaban (son redundantes pero inofensivas).
 
 ## Cosas a tener en cuenta / posibles próximos pasos
 

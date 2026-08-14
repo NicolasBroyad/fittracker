@@ -7,6 +7,12 @@ import { wireAuth, checkSession } from './auth.js';
 import { initTheme } from './theme.js';
 import { openGoalModal, closeGoalModal, submitGoal, clearGoal } from './goal.js';
 import { exportCSV } from './export.js';
+import {
+  switchScreen, wireRoutinesDelegation,
+  closeDayNameModal, saveDayName,
+  closeExerciseModal, saveExerciseModal, deleteExerciseModal,
+  closeSessionModal, saveSession,
+} from './routines.js';
 
 initTheme();
 
@@ -45,6 +51,20 @@ document.getElementById('goal-modal-save').addEventListener('click', submitGoal)
 document.getElementById('btn-goal-clear').addEventListener('click', clearGoal);
 document.getElementById('goal-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='goal-modal-overlay') closeGoalModal(); });
 document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
+
+document.getElementById('tab-screen-peso').addEventListener('click', ()=>switchScreen('peso'));
+document.getElementById('tab-screen-rutina').addEventListener('click', ()=>switchScreen('rutina'));
+wireRoutinesDelegation();
+document.getElementById('day-modal-cancel').addEventListener('click', closeDayNameModal);
+document.getElementById('day-modal-save').addEventListener('click', saveDayName);
+document.getElementById('day-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='day-modal-overlay') closeDayNameModal(); });
+document.getElementById('exercise-modal-cancel').addEventListener('click', closeExerciseModal);
+document.getElementById('exercise-modal-save').addEventListener('click', saveExerciseModal);
+document.getElementById('exercise-modal-delete').addEventListener('click', deleteExerciseModal);
+document.getElementById('exercise-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='exercise-modal-overlay') closeExerciseModal(); });
+document.getElementById('session-modal-close').addEventListener('click', closeSessionModal);
+document.getElementById('session-modal-save').addEventListener('click', saveSession);
+document.getElementById('session-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='session-modal-overlay') closeSessionModal(); });
 
 const now = new Date();
 document.getElementById('today-label').textContent = DOW[(now.getDay()+6)%7]+' '+now.getDate()+' de '+MONTHS[now.getMonth()]+' de '+now.getFullYear();
