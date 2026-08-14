@@ -9,9 +9,11 @@ export function wireSwipeNav(){
 
   document.addEventListener('touchstart', (e) => {
     if(e.touches.length !== 1) return;
+    const appRoot = document.getElementById('app-root');
+    if(!appRoot || appRoot.classList.contains('hidden')) return; // no logueado: no interferir con el login
     if(isJiggling()) return;
     if(document.querySelector('.modal-overlay:not(.hidden)')) return;
-    if(e.target.closest && e.target.closest('.chart-scroll')) return;
+    if(e.target.closest && e.target.closest('.chart-scroll, input, textarea, select, [contenteditable="true"]')) return;
     startX = e.touches[0].clientX;
     startY = e.touches[0].clientY;
     tracking = true;
