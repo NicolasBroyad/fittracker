@@ -85,7 +85,10 @@ function dayPanelHtml(dayOfWeek, logsByExercise, todayDow){
 
   return `<div class="panel routine-day-panel${isToday ? ' is-today' : ''}${isRest ? ' is-rest' : ''}" data-day="${dayOfWeek}">
     <div class="panel-head">
-      <h2>${DAY_NAMES[dayOfWeek-1]}${isToday ? ' <span class="today-badge">Hoy</span>' : ''}${isRest ? ' <span class="routine-day-name">— Descanso</span>' : (hasName ? ' <span class="routine-day-name">— '+escapeHtml(day.name)+'</span>' : '')}</h2>
+      <div>
+        ${isToday ? '<div class="routine-today-eyebrow">Rutina de hoy</div>' : ''}
+        <h2>${DAY_NAMES[dayOfWeek-1]}${isRest ? ' <span class="routine-day-name">— Descanso</span>' : (hasName ? ' <span class="routine-day-name">— '+escapeHtml(day.name)+'</span>' : '')}</h2>
+      </div>
       <button class="btn-expand routine-day-edit" data-day="${dayOfWeek}" title="Nombrar entrenamiento / descanso">${PENCIL_SVG}</button>
     </div>
     <div class="exercise-list">${body}</div>

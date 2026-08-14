@@ -61,7 +61,7 @@
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
-.hidden{ display:none; }
+.hidden{ display:none !important; }
 body{
   background:var(--paper);
   background-image:
@@ -532,12 +532,43 @@ body{
   gap:14px;
 }
 .routine-day-panel{ margin-top:0; }
-.routine-day-panel.is-today{ border-color:var(--brass); box-shadow:0 0 0 1px var(--brass); }
-.today-badge{
-  display:inline-block; font-family:'JetBrains Mono', monospace; font-size:0.62rem; font-weight:700;
-  color:var(--brass); background:var(--brass-soft); border-radius:999px; padding:2px 8px;
-  vertical-align:middle; margin-left:4px; text-transform:uppercase; letter-spacing:0.04em;
+
+/* tarjeta del día de hoy: mismo tratamiento "LCD" que la tarjeta de peso actual */
+.routine-day-panel.is-today{
+  background:var(--lcd-bg); color:var(--lcd-text); border-color:var(--lcd-bg);
+  position:relative; overflow:hidden;
 }
+.routine-day-panel.is-today::after{
+  content:""; position:absolute; right:-30px; top:-30px; width:110px; height:110px;
+  border-radius:50%; background:radial-gradient(circle, rgba(147,185,142,0.18), transparent 70%);
+}
+.routine-today-eyebrow{
+  text-transform:uppercase; letter-spacing:0.1em; font-size:0.62rem; font-weight:700;
+  color:var(--lcd-accent); margin-bottom:4px;
+}
+.routine-day-panel.is-today h2{ color:var(--lcd-text); }
+.routine-day-panel.is-today .routine-day-name{ color:#B9C7B4; }
+.routine-day-panel.is-today .routine-day-edit{ border-color:rgba(147,185,142,0.4); background:transparent; color:var(--lcd-accent); }
+.routine-day-panel.is-today .routine-day-edit:hover{ background:rgba(147,185,142,0.15); }
+.routine-day-panel.is-today .exercise-slot{ border-color:rgba(147,185,142,0.25); }
+.routine-day-panel.is-today .exercise-row:hover{ background:rgba(147,185,142,0.1); }
+.routine-day-panel.is-today .ex-number{ color:var(--lcd-accent); }
+.routine-day-panel.is-today .ex-name{ color:var(--lcd-text); }
+.routine-day-panel.is-today .ex-target{ color:#B9C7B4; }
+.routine-day-panel.is-today .ex-calendar-btn{ color:#B9C7B4; }
+.routine-day-panel.is-today .ex-calendar-btn:hover{ color:var(--lcd-text); }
+.routine-day-panel.is-today .ex-stat{ color:var(--lcd-accent); }
+.routine-day-panel.is-today .ex-stat-label,
+.routine-day-panel.is-today .ex-stat-empty,
+.routine-day-panel.is-today .ex-stat-date{ color:#8A9A85; }
+.routine-day-panel.is-today .slot-move button{ border-color:rgba(147,185,142,0.4); background:transparent; color:#B9C7B4; }
+.routine-day-panel.is-today .slot-move button:hover{ background:rgba(147,185,142,0.15); color:var(--lcd-text); }
+.routine-day-panel.is-today .btn-add-alt{ color:#8A9A85; }
+.routine-day-panel.is-today .btn-add-alt:hover{ color:var(--lcd-accent); }
+.routine-day-panel.is-today .btn-add-exercise{ border-color:rgba(147,185,142,0.4); color:#B9C7B4; }
+.routine-day-panel.is-today .btn-add-exercise:hover{ background:rgba(147,185,142,0.15); color:var(--lcd-text); border-color:var(--lcd-accent); }
+.routine-day-panel.is-today .empty-state{ color:#8A9A85; }
+
 .routine-day-panel.is-rest{ opacity:0.72; }
 .rest-day-message{ font-style:italic; }
 .routine-day-name{ font-weight:400; color:var(--ink-soft); font-size:0.95rem; }

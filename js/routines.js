@@ -31,6 +31,10 @@ export async function switchScreen(screen){
   document.getElementById('screen-rutina').classList.toggle('hidden', screen !== 'rutina');
   document.getElementById('tab-screen-peso').classList.toggle('active', screen === 'peso');
   document.getElementById('tab-screen-rutina').classList.toggle('active', screen === 'rutina');
+  document.getElementById('topbar-eyebrow').classList.toggle('hidden', screen !== 'peso');
+  document.getElementById('topbar-title').classList.toggle('hidden', screen !== 'peso');
+  document.getElementById('today-label').classList.toggle('hidden', screen !== 'peso');
+  document.getElementById('btn-log-today').classList.toggle('hidden', screen !== 'peso');
   try{ localStorage.setItem(SCREEN_STORAGE_KEY, screen); }catch(e){}
   if(screen === 'rutina' && !routinesLoaded){
     routinesLoaded = true;
