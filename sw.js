@@ -1,4 +1,4 @@
-const CACHE_NAME = 'registro-peso-v4';
+const CACHE_NAME = 'registro-peso-v5';
 const ASSETS = [
   '/',
   '/index.html',
@@ -15,6 +15,7 @@ const ASSETS = [
   '/js/modal.js',
   '/js/render.js',
   '/js/routines-derived.js',
+  '/js/routines-dnd.js',
   '/js/routines-render.js',
   '/js/routines-state.js',
   '/js/routines-storage.js',

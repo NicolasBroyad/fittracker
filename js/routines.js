@@ -9,11 +9,12 @@ import {
 } from './routines-state.js';
 import {
   loadRoutineDays, loadRoutineExercises, saveRoutineDay,
-  createExercise, updateExercise, updateExerciseOrderIndex, deleteExercise,
+  createExercise, updateExercise, deleteExercise,
   loadExerciseLogs, replaceSessionSets, deleteSessionLogs,
 } from './routines-storage.js';
 import { renderRoutines } from './routines-render.js';
 import { groupLogsBySession, formatSessionSets, groupIntoSlots } from './routines-derived.js';
+import { wireDragReorder, isJiggling, exitJiggleMode } from './routines-dnd.js';
 import { showToast, escapeHtml, todayISO, fromISO, toISO, fmtShort, MONTHS, DOW } from './utils.js';
 
 const SCREEN_STORAGE_KEY = 'broyi_peso_screen';
@@ -135,24 +136,6 @@ export async function deleteExerciseModal(){
   closeExerciseModal();
   await renderRoutines();
   showToast('Ejercicio eliminado');
-}
-
-// ---------- Reordenar slots ----------
-
-export async function moveSlot(dayOfWeek, orderIndex, direction){
-  const exercises = routineExercises[dayOfWeek] || [];
-  const slots = groupIntoSlots(exercises);
-  const idx = slots.findIndex(s => s.orderIndex === orderIndex);
-  const swapIdx = idx + direction;
-  if(idx === -1 || swapIdx < 0 || swapIdx >= slots.length) return;
-  const a = slots[idx], b = slots[swapIdx];
-  await Promise.all([
-    ...a.items.map(e => updateExerciseOrderIndex(e.id, b.orderIndex)),
-    ...b.items.map(e => updateExerciseOrderIndex(e.id, a.orderIndex)),
-  ]);
-  a.items.forEach(e => { e.order_index = b.orderIndex; });
-  b.items.forEach(e => { e.order_index = a.orderIndex; });
-  await renderRoutines();
 }
 
 // ---------- Modal: registrar/editar sesión ----------
@@ -324,21 +307,25 @@ async function pickExerciseCalendarDay(iso){
 
 export function wireRoutinesDelegation(){
   document.getElementById('routine-days-container').addEventListener('click', (e)=>{
+    const addBtn = e.target.closest('.btn-add-exercise');
+    if(addBtn){
+      const day = Number(addBtn.dataset.day);
+      if(isJiggling(day)){ exitJiggleMode(); return; }
+      if(isJiggling()) return;
+      openExerciseModal(day, null);
+      return;
+    }
+    if(isJiggling()) return; // mientras se reordena un día, el resto de la lista queda bloqueada
     const calBtn = e.target.closest('.ex-calendar-btn');
     if(calBtn){ e.stopPropagation(); openExerciseCalendar(calBtn.dataset.id); return; }
-    const moveUp = e.target.closest('.slot-move-up');
-    if(moveUp){ e.stopPropagation(); moveSlot(Number(moveUp.closest('.routine-day-panel').dataset.day), Number(moveUp.dataset.order), -1); return; }
-    const moveDown = e.target.closest('.slot-move-down');
-    if(moveDown){ e.stopPropagation(); moveSlot(Number(moveDown.closest('.routine-day-panel').dataset.day), Number(moveDown.dataset.order), 1); return; }
     const addAlt = e.target.closest('.btn-add-alt');
     if(addAlt){ openExerciseModal(Number(addAlt.closest('.routine-day-panel').dataset.day), null, Number(addAlt.dataset.order)); return; }
     const editBtn = e.target.closest('.routine-day-edit');
     if(editBtn){ openDayNameModal(Number(editBtn.dataset.day)); return; }
-    const addBtn = e.target.closest('.btn-add-exercise');
-    if(addBtn){ openExerciseModal(Number(addBtn.dataset.day), null); return; }
     const row = e.target.closest('.exercise-row');
     if(row){ openSessionModal(row.dataset.id); return; }
   });
+  wireDragReorder();
 
   document.getElementById('session-modal-edit-exercise').addEventListener('click', ()=>{
     if(!sessionExercise) return;

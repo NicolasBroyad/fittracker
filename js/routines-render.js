@@ -5,8 +5,6 @@ import { formatSessionSets, computeLatestSession, computeBestSession, groupIntoS
 
 const PENCIL_SVG = '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5z"/></svg>';
 const CALENDAR_SVG = '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>';
-const UP_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 15l-6-6-6 6"/></svg>';
-const DOWN_SVG = '<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>';
 
 function relativeLabel(dateStr){
   const today = todayISO();
@@ -51,14 +49,8 @@ function slotHtml(slot, position, logsByExercise){
   const variantCount = slot.items.length;
   const rows = slot.items.map(ex => exerciseRowHtml(ex, slotLabel(position, ex.variant, variantCount), logsByExercise)).join('');
   return `<div class="exercise-slot" data-order="${slot.orderIndex}">
-    <div class="slot-move">
-      <button class="slot-move-up" data-order="${slot.orderIndex}" title="Subir">${UP_SVG}</button>
-      <button class="slot-move-down" data-order="${slot.orderIndex}" title="Bajar">${DOWN_SVG}</button>
-    </div>
-    <div class="slot-items">
-      ${rows}
-      <button class="btn-add-alt" data-order="${slot.orderIndex}">+ Alternativa</button>
-    </div>
+    ${rows}
+    <button class="btn-add-alt" data-order="${slot.orderIndex}">+ Alternativa</button>
   </div>`;
 }
 
