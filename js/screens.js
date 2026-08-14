@@ -1,9 +1,14 @@
-import { loadRoutines } from './routines.js';
+import { loadRoutines, updateTodayScrollHint } from './routines.js';
 import { renderHome } from './home-render.js';
 import { renderGym } from './gym-render.js';
 
-const SCREENS = ['home', 'peso', 'rutina', 'gimnasio'];
+export const SCREEN_ORDER = ['home', 'peso', 'rutina', 'gimnasio'];
 let routinesLoaded = false;
+let currentScreen = 'home';
+
+export function getCurrentScreen(){
+  return currentScreen;
+}
 
 export async function ensureRoutinesLoaded(){
   if(routinesLoaded) return;
@@ -12,13 +17,11 @@ export async function ensureRoutinesLoaded(){
 }
 
 export async function switchScreen(screen){
-  SCREENS.forEach(s => {
+  currentScreen = screen;
+  SCREEN_ORDER.forEach(s => {
     document.getElementById('screen-'+s).classList.toggle('hidden', s !== screen);
     document.getElementById('tab-screen-'+s).classList.toggle('active', s === screen);
   });
-  document.getElementById('topbar-eyebrow').classList.toggle('hidden', screen !== 'peso');
-  document.getElementById('topbar-title').classList.toggle('hidden', screen !== 'peso');
-  document.getElementById('today-label').classList.toggle('hidden', screen !== 'peso');
   document.getElementById('btn-log-today').classList.toggle('hidden', screen !== 'peso');
 
   if(screen === 'home'){
@@ -30,4 +33,5 @@ export async function switchScreen(screen){
     await ensureRoutinesLoaded();
     await renderGym();
   }
+  updateTodayScrollHint();
 }

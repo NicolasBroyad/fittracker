@@ -1,5 +1,5 @@
 import { viewMonth } from './state.js';
-import { MONTHS, DOW, todayISO } from './utils.js';
+import { todayISO } from './utils.js';
 import { renderCalendar, renderMonthlySummary } from './render.js';
 import { openModal, closeModal, saveEntry, deleteEntry, closeViewModal, editFromViewModal } from './modal.js';
 import { setActiveTab, setChartRange, openChartModal, closeChartModal, rerenderIfOpen } from './chart-modal.js';
@@ -8,8 +8,9 @@ import { initTheme } from './theme.js';
 import { openGoalModal, closeGoalModal, submitGoal, clearGoal } from './goal.js';
 import { exportCSV } from './export.js';
 import { switchScreen } from './screens.js';
+import { wireSwipeNav } from './swipe-nav.js';
 import {
-  wireRoutinesDelegation,
+  wireRoutinesDelegation, updateTodayScrollHint,
   closeDayNameModal, saveDayName,
   closeExerciseModal, saveExerciseModal, deleteExerciseModal,
   closeSessionModal, saveSession, openSessionModal,
@@ -58,6 +59,18 @@ document.getElementById('tab-screen-peso').addEventListener('click', ()=>switchS
 document.getElementById('tab-screen-rutina').addEventListener('click', ()=>switchScreen('rutina'));
 document.getElementById('tab-screen-gimnasio').addEventListener('click', ()=>switchScreen('gimnasio'));
 wireRoutinesDelegation();
+wireSwipeNav();
+
+document.getElementById('rutina-scroll-hint').addEventListener('click', ()=>{
+  const todayCard = document.querySelector('.routine-day-panel.is-today');
+  if(todayCard) todayCard.scrollIntoView({ behavior: 'smooth', block: 'start' });
+});
+let scrollHintTicking = false;
+window.addEventListener('scroll', ()=>{
+  if(scrollHintTicking) return;
+  scrollHintTicking = true;
+  requestAnimationFrame(()=>{ updateTodayScrollHint(); scrollHintTicking = false; });
+}, { passive: true });
 
 document.getElementById('home-container').addEventListener('click', (e)=>{
   if(e.target.closest('.home-log-weight-btn')){ openModal(todayISO()); return; }
@@ -77,9 +90,6 @@ document.getElementById('exercise-modal-overlay').addEventListener('click', (e)=
 document.getElementById('session-modal-close').addEventListener('click', closeSessionModal);
 document.getElementById('session-modal-save').addEventListener('click', saveSession);
 document.getElementById('session-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='session-modal-overlay') closeSessionModal(); });
-
-const now = new Date();
-document.getElementById('today-label').textContent = DOW[(now.getDay()+6)%7]+' '+now.getDate()+' de '+MONTHS[now.getMonth()]+' de '+now.getFullYear();
 
 wireAuth();
 checkSession();

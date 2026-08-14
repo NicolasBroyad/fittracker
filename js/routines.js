@@ -24,11 +24,27 @@ export async function loadRoutines(){
   setRoutineDays(days);
   setRoutineExercises(exercises);
   await renderRoutines();
+  updateTodayScrollHint();
 }
 
 // refresca las 3 vistas que dependen de rutinas, sin importar cuál esté visible en este momento
 async function refreshRoutineViews(){
   await Promise.all([renderRoutines(), renderGym(), renderHome()]);
+  updateTodayScrollHint();
+}
+
+// muestra/oculta el botón flotante "ir a la rutina de hoy" según si esa tarjeta está fuera de vista
+// (solo tiene sentido en la pantalla de Rutina, se detecta mirando el DOM directo para no depender de screens.js)
+export function updateTodayScrollHint(){
+  const hint = document.getElementById('rutina-scroll-hint');
+  const screenEl = document.getElementById('screen-rutina');
+  if(!hint || !screenEl) return;
+  if(screenEl.classList.contains('hidden')){ hint.classList.add('hidden'); return; }
+  const todayCard = document.querySelector('.routine-day-panel.is-today');
+  if(!todayCard){ hint.classList.add('hidden'); return; }
+  const rect = todayCard.getBoundingClientRect();
+  const outOfView = rect.top > window.innerHeight - 60;
+  hint.classList.toggle('hidden', !outOfView);
 }
 
 // ---------- Modal: nombre del día ----------

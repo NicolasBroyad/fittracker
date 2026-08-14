@@ -84,30 +84,10 @@ body{
 .topbar{
   display:flex;
   justify-content:space-between;
-  align-items:flex-end;
+  align-items:center;
   gap:16px;
   margin-bottom:28px;
   flex-wrap:wrap;
-}
-.topbar h1{
-  font-family:'Fraunces', serif;
-  font-weight:700;
-  font-size:2.1rem;
-  margin:0 0 4px;
-  letter-spacing:-0.01em;
-}
-.topbar .sub{
-  font-size:0.85rem;
-  color:var(--ink-soft);
-  font-variant-numeric: tabular-nums;
-}
-.eyebrow{
-  text-transform:uppercase;
-  letter-spacing:0.14em;
-  font-size:0.68rem;
-  color:var(--brass);
-  font-weight:600;
-  margin-bottom:6px;
 }
 .btn-primary{
   background:var(--accent);
@@ -746,6 +726,37 @@ body{
   font-family:'Inter',sans-serif;
 }
 .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+
+/* botón flotante "ir a la rutina de hoy" (aparece cuando esa tarjeta está fuera de vista) */
+.rutina-scroll-hint{
+  position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
+  width:46px; height:46px; border-radius:50%; border:none;
+  background:var(--accent); color:var(--paper-card);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 8px 20px rgba(30,42,34,0.3);
+  cursor:pointer; z-index:45;
+  animation:scroll-hint-bounce 1.4s ease-in-out infinite;
+}
+.rutina-scroll-hint.hidden{ display:none !important; }
+.rutina-scroll-hint:hover{ background:#274429; }
+@keyframes scroll-hint-bounce{
+  0%,100%{ transform:translateX(-50%) translateY(0); }
+  50%{ transform:translateX(-50%) translateY(7px); }
+}
+
+/* nav inferior fija en mobile, más accesible al pulgar */
+@media (max-width:640px){
+  .app-tabs{
+    position:fixed; left:0; right:0; bottom:0; margin:0; z-index:40;
+    background:var(--paper-card); border-top:1px solid var(--line);
+    padding:10px 16px calc(10px + env(safe-area-inset-bottom));
+    justify-content:center;
+  }
+  .tabs#screen-tabs{ width:100%; max-width:420px; }
+  .tabs#screen-tabs button{ flex:1; }
+  .app{ padding-bottom:calc(84px + env(safe-area-inset-bottom)); }
+  .rutina-scroll-hint{ bottom:calc(78px + env(safe-area-inset-bottom)); }
+}
 
 /* ---------- Login ---------- */
 .login-screen{
