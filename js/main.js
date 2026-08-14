@@ -7,11 +7,12 @@ import { wireAuth, checkSession } from './auth.js';
 import { initTheme } from './theme.js';
 import { openGoalModal, closeGoalModal, submitGoal, clearGoal } from './goal.js';
 import { exportCSV } from './export.js';
+import { switchScreen } from './screens.js';
 import {
-  switchScreen, wireRoutinesDelegation,
+  wireRoutinesDelegation,
   closeDayNameModal, saveDayName,
   closeExerciseModal, saveExerciseModal, deleteExerciseModal,
-  closeSessionModal, saveSession,
+  closeSessionModal, saveSession, openSessionModal,
 } from './routines.js';
 
 initTheme();
@@ -52,9 +53,20 @@ document.getElementById('btn-goal-clear').addEventListener('click', clearGoal);
 document.getElementById('goal-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='goal-modal-overlay') closeGoalModal(); });
 document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
 
+document.getElementById('tab-screen-home').addEventListener('click', ()=>switchScreen('home'));
 document.getElementById('tab-screen-peso').addEventListener('click', ()=>switchScreen('peso'));
 document.getElementById('tab-screen-rutina').addEventListener('click', ()=>switchScreen('rutina'));
+document.getElementById('tab-screen-gimnasio').addEventListener('click', ()=>switchScreen('gimnasio'));
 wireRoutinesDelegation();
+
+document.getElementById('home-container').addEventListener('click', (e)=>{
+  if(e.target.closest('.home-log-weight-btn')){ openModal(todayISO()); return; }
+  if(e.target.closest('.home-goto-rutina-btn')){ switchScreen('rutina'); return; }
+});
+document.getElementById('gym-container').addEventListener('click', (e)=>{
+  const row = e.target.closest('.gym-history-item');
+  if(row) openSessionModal(row.dataset.exerciseId, row.dataset.date);
+});
 document.getElementById('day-modal-cancel').addEventListener('click', closeDayNameModal);
 document.getElementById('day-modal-save').addEventListener('click', saveDayName);
 document.getElementById('day-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='day-modal-overlay') closeDayNameModal(); });

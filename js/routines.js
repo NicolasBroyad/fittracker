@@ -1,6 +1,6 @@
 import {
   DAY_NAMES, routineDays, routineExercises, setRoutineDays, setRoutineExercises,
-  activeScreen, setActiveScreenState, editingDay, setEditingDay,
+  editingDay, setEditingDay,
   editingExercise, setEditingExercise, sessionExercise, setSessionExercise,
   sessionEditDate, setSessionEditDate, sessionSetRows, setSessionSetRows,
   exerciseCalendarExerciseId, setExerciseCalendarExerciseId,
@@ -13,41 +13,22 @@ import {
   loadExerciseLogs, replaceSessionSets, deleteSessionLogs,
 } from './routines-storage.js';
 import { renderRoutines } from './routines-render.js';
+import { renderGym } from './gym-render.js';
+import { renderHome } from './home-render.js';
 import { groupLogsBySession, formatSessionSets, groupIntoSlots } from './routines-derived.js';
 import { wireDragReorder, isJiggling, exitJiggleMode } from './routines-dnd.js';
 import { showToast, escapeHtml, todayISO, fromISO, toISO, fmtShort, MONTHS, DOW } from './utils.js';
-
-const SCREEN_STORAGE_KEY = 'broyi_peso_screen';
-let routinesLoaded = false;
-
-export function initScreenSwitch(){
-  let saved = 'peso';
-  try{ saved = localStorage.getItem(SCREEN_STORAGE_KEY) || 'peso'; }catch(e){}
-  switchScreen(saved);
-}
-
-export async function switchScreen(screen){
-  setActiveScreenState(screen);
-  document.getElementById('screen-peso').classList.toggle('hidden', screen !== 'peso');
-  document.getElementById('screen-rutina').classList.toggle('hidden', screen !== 'rutina');
-  document.getElementById('tab-screen-peso').classList.toggle('active', screen === 'peso');
-  document.getElementById('tab-screen-rutina').classList.toggle('active', screen === 'rutina');
-  document.getElementById('topbar-eyebrow').classList.toggle('hidden', screen !== 'peso');
-  document.getElementById('topbar-title').classList.toggle('hidden', screen !== 'peso');
-  document.getElementById('today-label').classList.toggle('hidden', screen !== 'peso');
-  document.getElementById('btn-log-today').classList.toggle('hidden', screen !== 'peso');
-  try{ localStorage.setItem(SCREEN_STORAGE_KEY, screen); }catch(e){}
-  if(screen === 'rutina' && !routinesLoaded){
-    routinesLoaded = true;
-    await loadRoutines();
-  }
-}
 
 export async function loadRoutines(){
   const [days, exercises] = await Promise.all([loadRoutineDays(), loadRoutineExercises()]);
   setRoutineDays(days);
   setRoutineExercises(exercises);
   await renderRoutines();
+}
+
+// refresca las 3 vistas que dependen de rutinas, sin importar cuál esté visible en este momento
+async function refreshRoutineViews(){
+  await Promise.all([renderRoutines(), renderGym(), renderHome()]);
 }
 
 // ---------- Modal: nombre del día ----------
@@ -72,7 +53,7 @@ export async function saveDayName(){
   if(error){ console.error(error); showToast('No se pudo guardar'); return; }
   routineDays[editingDay] = { name, is_rest: isRest };
   closeDayNameModal();
-  await renderRoutines();
+  await refreshRoutineViews();
   showToast('Guardado');
 }
 
@@ -124,7 +105,7 @@ export async function saveExerciseModal(){
     routineExercises[dayOfWeek].push(data);
   }
   closeExerciseModal();
-  await renderRoutines();
+  await refreshRoutineViews();
   showToast('Guardado');
 }
 export async function deleteExerciseModal(){
@@ -134,7 +115,7 @@ export async function deleteExerciseModal(){
   if(error){ console.error(error); showToast('No se pudo borrar'); return; }
   routineExercises[dayOfWeek] = (routineExercises[dayOfWeek] || []).filter(e => e.id !== exercise.id);
   closeExerciseModal();
-  await renderRoutines();
+  await refreshRoutineViews();
   showToast('Ejercicio eliminado');
 }
 
@@ -227,7 +208,7 @@ export async function saveSession(){
   const { error } = await replaceSessionSets(sessionExercise.id, sessionEditDate, rows);
   if(error){ console.error(error); showToast('No se pudo guardar'); return; }
   closeSessionModal();
-  await renderRoutines();
+  await refreshRoutineViews();
   showToast('Sesión guardada');
 }
 
@@ -236,7 +217,7 @@ export async function deleteSessionHistoryEntry(exerciseId, date){
   if(error){ console.error(error); showToast('No se pudo borrar'); return; }
   showToast('Sesión eliminada');
   await openSessionModal(exerciseId, date === sessionEditDate ? todayISO() : sessionEditDate);
-  await renderRoutines();
+  await refreshRoutineViews();
 }
 
 // ---------- Calendario por ejercicio ----------

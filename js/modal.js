@@ -2,6 +2,7 @@ import { entries, selectedDateStr, setSelectedDateStr } from './state.js';
 import { fromISO, MONTHS, DOW, showToast } from './utils.js';
 import { upsertEntry, deleteEntryByDate, logChange } from './storage.js';
 import { renderAll } from './render.js';
+import { renderHome } from './home-render.js';
 
 export function openDayModal(iso){
   if(entries[iso]) openViewModal(iso);
@@ -58,6 +59,7 @@ export async function saveEntry(){
   logChange(selectedDateStr, previous ? 'updated' : 'created', previous, { weight, note });
   closeModal();
   renderAll();
+  renderHome();
   showToast('Guardado');
 }
 export async function deleteEntry(){
@@ -68,5 +70,6 @@ export async function deleteEntry(){
   logChange(selectedDateStr, 'deleted', previous, null);
   closeModal();
   renderAll();
+  renderHome();
   showToast('Registro eliminado');
 }

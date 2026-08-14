@@ -8,9 +8,6 @@ export function setRoutineDays(v){ routineDays = v; }
 export let routineExercises = {};
 export function setRoutineExercises(v){ routineExercises = v; }
 
-export let activeScreen = 'peso';
-export function setActiveScreenState(v){ activeScreen = v; }
-
 // día en edición (nombre del entrenamiento)
 export let editingDay = null;
 export function setEditingDay(v){ editingDay = v; }

@@ -1,3 +1,5 @@
+import { toISO } from './utils.js';
+
 // logs: [{ session_date, set_number, weight, reps }] ordenados por fecha desc, set_number asc
 export function groupLogsBySession(logs){
   const byDate = new Map();
@@ -67,6 +69,104 @@ export function computeBestSession(logs){
 
   const sets = logs.filter(l => l.session_date === bestDate).sort((a,b) => a.set_number - b.set_number);
   return { date: bestDate, sets };
+}
+
+function dayOfWeekOf(date){ return ((date.getDay()+6)%7) + 1; } // 1=lunes..7=domingo
+
+// día de hoy: qué toca, si es descanso, y cuántos de sus ejercicios ya tienen datos hoy
+export function getTodayStatus(routineDays, routineExercises, logsByExercise){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dayOfWeek = dayOfWeekOf(today);
+  const todayIso = toISO(today);
+  const day = routineDays[dayOfWeek] || { name: '', is_rest: false };
+  const exercises = routineExercises[dayOfWeek] || [];
+  const isRest = !!day.is_rest;
+  const hasPlan = exercises.length > 0;
+  const loggedIds = new Set(
+    exercises.filter(ex => (logsByExercise[ex.id] || []).some(l => l.session_date === todayIso)).map(ex => ex.id)
+  );
+  return {
+    dayOfWeek,
+    dayName: day.name || '',
+    isRest,
+    hasPlan,
+    totalExercises: exercises.length,
+    loggedCount: loggedIds.size,
+    isFullyLogged: hasPlan && loggedIds.size === exercises.length,
+    isAnyLogged: loggedIds.size > 0,
+  };
+}
+
+function isDayCompliant(dow, iso, routineDays, routineExercises, logsByExercise){
+  const day = routineDays[dow];
+  const exercises = routineExercises[dow] || [];
+  if(day && day.is_rest) return true;
+  if(exercises.length === 0) return true; // nada planificado ese día, no hay nada que cumplir
+  return exercises.some(ex => (logsByExercise[ex.id] || []).some(l => l.session_date === iso));
+}
+
+// racha de días consecutivos "cumplidos": descanso o sin plan cuentan solos; un día de entreno
+// cuenta si hay al menos un set cargado ese día. Hoy no rompe la racha si todavía no se cargó nada
+// (el día no terminó) — se empieza a evaluar desde ayer, igual criterio que la racha de peso.
+export function computeGymStreak(routineDays, routineExercises, logsByExercise){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todayDow = dayOfWeekOf(today);
+  const todayIso = toISO(today);
+  let cursor = new Date(today);
+  if(!isDayCompliant(todayDow, todayIso, routineDays, routineExercises, logsByExercise)){
+    cursor.setDate(cursor.getDate()-1);
+  }
+  let count = 0;
+  for(let i=0; i<3650; i++){
+    const dow = dayOfWeekOf(cursor);
+    const iso = toISO(cursor);
+    if(!isDayCompliant(dow, iso, routineDays, routineExercises, logsByExercise)) break;
+    count++;
+    cursor.setDate(cursor.getDate()-1);
+  }
+  return count;
+}
+
+// top ejercicios por mejora: peso máximo de la primera sesión vs. el mejor registro actual.
+// Requiere al menos 2 sesiones distintas y una mejora positiva.
+export function computeMostImproved(routineExercises, logsByExercise, topN){
+  const results = [];
+  Object.entries(routineExercises).forEach(([dow, exercises]) => {
+    exercises.forEach(ex => {
+      const logs = logsByExercise[ex.id] || [];
+      const withWeight = logs.filter(l => l.weight != null);
+      if(withWeight.length === 0) return;
+      let firstDate = withWeight[0].session_date;
+      withWeight.forEach(l => { if(l.session_date < firstDate) firstDate = l.session_date; });
+      const firstWeight = Math.max(...withWeight.filter(l => l.session_date === firstDate).map(l => Number(l.weight)));
+      const best = computeBestSession(logs);
+      if(!best || best.date === firstDate) return;
+      const bestWeight = Math.max(...best.sets.filter(s => s.weight != null).map(s => Number(s.weight)));
+      const delta = bestWeight - firstWeight;
+      if(delta <= 0) return;
+      results.push({
+        exerciseId: ex.id, exerciseName: ex.name, dayOfWeek: Number(dow),
+        firstWeight, firstDate, bestWeight, bestDate: best.date, delta,
+      });
+    });
+  });
+  results.sort((a,b) => b.delta - a.delta);
+  return topN ? results.slice(0, topN) : results;
+}
+
+// todas las sesiones de todos los ejercicios, más recientes primero
+export function computeAllSessionsHistory(routineExercises, logsByExercise){
+  const rows = [];
+  Object.entries(routineExercises).forEach(([dow, exercises]) => {
+    exercises.forEach(ex => {
+      const logs = logsByExercise[ex.id] || [];
+      groupLogsBySession(logs).forEach(s => {
+        rows.push({ date: s.date, exerciseId: ex.id, exerciseName: ex.name, dayOfWeek: Number(dow), sets: s.sets });
+      });
+    });
+  });
+  rows.sort((a,b) => b.date.localeCompare(a.date));
+  return rows;
 }
 
 // agrupa los ejercicios de un día en slots por order_index, ordenados; cada slot trae sus variantes ordenadas

@@ -1,14 +1,14 @@
 import { sb } from './config.js';
 import { loadEntries } from './storage.js';
 import { renderAll } from './render.js';
-import { initScreenSwitch } from './routines.js';
+import { switchScreen } from './screens.js';
 
 export async function startApp(){
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app-root').classList.remove('hidden');
   await loadEntries();
   renderAll();
-  initScreenSwitch();
+  await switchScreen('home');
 }
 export function showLogin(){
   document.getElementById('app-root').classList.add('hidden');
