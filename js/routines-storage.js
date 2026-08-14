@@ -1,15 +1,15 @@
 import { sb } from './config.js';
 
 export async function loadRoutineDays(){
-  const { data, error } = await sb.from('routine_days').select('day_of_week,name');
+  const { data, error } = await sb.from('routine_days').select('day_of_week,name,is_rest');
   if(error){ console.error(error); return {}; }
   const result = {};
-  (data || []).forEach(r => { result[r.day_of_week] = { name: r.name || '' }; });
+  (data || []).forEach(r => { result[r.day_of_week] = { name: r.name || '', is_rest: !!r.is_rest }; });
   return result;
 }
 
-export async function saveRoutineDayName(dayOfWeek, name){
-  return sb.from('routine_days').upsert({ day_of_week: dayOfWeek, name }, { onConflict: 'user_id,day_of_week' });
+export async function saveRoutineDay(dayOfWeek, name, isRest){
+  return sb.from('routine_days').upsert({ day_of_week: dayOfWeek, name, is_rest: isRest }, { onConflict: 'user_id,day_of_week' });
 }
 
 export async function loadRoutineExercises(){

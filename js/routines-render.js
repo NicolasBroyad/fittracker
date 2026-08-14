@@ -62,21 +62,34 @@ function slotHtml(slot, position, logsByExercise){
   </div>`;
 }
 
-function dayPanelHtml(dayOfWeek, logsByExercise){
-  const day = routineDays[dayOfWeek] || { name: '' };
+function todayDayOfWeek(){
+  return ((new Date().getDay()+6)%7) + 1; // 1=lunes..7=domingo
+}
+
+function dayPanelHtml(dayOfWeek, logsByExercise, todayDow){
+  const day = routineDays[dayOfWeek] || { name: '', is_rest: false };
+  const isRest = !!day.is_rest;
   const exercises = routineExercises[dayOfWeek] || [];
   const hasName = day.name && day.name.trim() !== '';
+  const isToday = dayOfWeek === todayDow;
   const slots = groupIntoSlots(exercises);
-  const body = slots.length === 0
-    ? '<div class="empty-state">Sin ejercicios todavía.</div>'
-    : slots.map((slot, i) => slotHtml(slot, i+1, logsByExercise)).join('');
-  return `<div class="panel routine-day-panel" data-day="${dayOfWeek}">
+
+  let body;
+  if(isRest){
+    body = '<div class="empty-state rest-day-message">Día de descanso.</div>';
+  } else if(slots.length === 0){
+    body = '<div class="empty-state">Sin ejercicios todavía.</div>';
+  } else {
+    body = slots.map((slot, i) => slotHtml(slot, i+1, logsByExercise)).join('');
+  }
+
+  return `<div class="panel routine-day-panel${isToday ? ' is-today' : ''}${isRest ? ' is-rest' : ''}" data-day="${dayOfWeek}">
     <div class="panel-head">
-      <h2>${DAY_NAMES[dayOfWeek-1]}${hasName ? ' <span class="routine-day-name">— '+escapeHtml(day.name)+'</span>' : ''}</h2>
-      <button class="btn-expand routine-day-edit" data-day="${dayOfWeek}" title="Nombrar entrenamiento">${PENCIL_SVG}</button>
+      <h2>${DAY_NAMES[dayOfWeek-1]}${isToday ? ' <span class="today-badge">Hoy</span>' : ''}${isRest ? ' <span class="routine-day-name">— Descanso</span>' : (hasName ? ' <span class="routine-day-name">— '+escapeHtml(day.name)+'</span>' : '')}</h2>
+      <button class="btn-expand routine-day-edit" data-day="${dayOfWeek}" title="Nombrar entrenamiento / descanso">${PENCIL_SVG}</button>
     </div>
     <div class="exercise-list">${body}</div>
-    <button class="btn-add-exercise" data-day="${dayOfWeek}">+ Ejercicio</button>
+    ${isRest ? '' : `<button class="btn-add-exercise" data-day="${dayOfWeek}">+ Ejercicio</button>`}
   </div>`;
 }
 
@@ -84,7 +97,8 @@ export async function renderRoutines(){
   const container = document.getElementById('routine-days-container');
   if(!container) return;
   const logsByExercise = await loadAllLogsGroupedByExercise();
+  const todayDow = todayDayOfWeek();
   let html = '';
-  for(let d=1; d<=7; d++) html += dayPanelHtml(d, logsByExercise);
+  for(let d=1; d<=7; d++) html += dayPanelHtml(d, logsByExercise, todayDow);
   container.innerHTML = html;
 }

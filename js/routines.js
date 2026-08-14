@@ -8,7 +8,7 @@ import {
   exerciseCalendarLogDates, setExerciseCalendarLogDates,
 } from './routines-state.js';
 import {
-  loadRoutineDays, loadRoutineExercises, saveRoutineDayName,
+  loadRoutineDays, loadRoutineExercises, saveRoutineDay,
   createExercise, updateExercise, updateExerciseOrderIndex, deleteExercise,
   loadExerciseLogs, replaceSessionSets, deleteSessionLogs,
 } from './routines-storage.js';
@@ -49,8 +49,10 @@ export async function loadRoutines(){
 
 export function openDayNameModal(dayOfWeek){
   setEditingDay(dayOfWeek);
+  const day = routineDays[dayOfWeek];
   document.getElementById('day-modal-label').textContent = DAY_NAMES[dayOfWeek-1];
-  document.getElementById('day-input-name').value = (routineDays[dayOfWeek] && routineDays[dayOfWeek].name) || '';
+  document.getElementById('day-input-name').value = (day && day.name) || '';
+  document.getElementById('day-input-rest').checked = !!(day && day.is_rest);
   document.getElementById('day-modal-overlay').classList.remove('hidden');
   setTimeout(()=>document.getElementById('day-input-name').focus(), 50);
 }
@@ -60,9 +62,10 @@ export function closeDayNameModal(){
 }
 export async function saveDayName(){
   const name = document.getElementById('day-input-name').value.trim();
-  const { error } = await saveRoutineDayName(editingDay, name);
+  const isRest = document.getElementById('day-input-rest').checked;
+  const { error } = await saveRoutineDay(editingDay, name, isRest);
   if(error){ console.error(error); showToast('No se pudo guardar'); return; }
-  routineDays[editingDay] = { name };
+  routineDays[editingDay] = { name, is_rest: isRest };
   closeDayNameModal();
   await renderRoutines();
   showToast('Guardado');
