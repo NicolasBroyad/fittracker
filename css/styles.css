@@ -78,6 +78,8 @@ body{
   max-width: 1180px;
   margin: 0 auto;
   padding: calc(28px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 80px calc(20px + env(safe-area-inset-left));
+  min-height: 100vh;
+  min-height: 100dvh;
 }
 
 /* ---------- Header ---------- */

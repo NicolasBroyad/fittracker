@@ -10,7 +10,12 @@ function screenEl(name){ return document.getElementById('screen-'+name); }
 // deja el panel fijo exactamente donde estaba en el documento (mismo top/left/width que tenía
 // en flujo normal) — si se usa top:0 a secas, el panel "salta" hacia arriba apenas se activa
 // el gesto, porque su posición natural está más abajo del topbar.
-function preparePane(el, rect){
+// isCurrent=true (la pantalla que se estaba viendo, la única que ocupaba espacio real en el
+// flujo del documento antes del gesto) deja un "spacer" del mismo alto en su lugar: si no,
+// al volverse position:fixed el documento pierde esa altura de golpe, y como el nav de abajo
+// también es fixed (bottom:0), su posición depende de cuánto mide el documento — sin el spacer
+// el nav "saltaba" hacia arriba durante todo el gesto y volvía a bajar recién al soltar.
+function preparePane(el, rect, isCurrent){
   el.classList.add('screen-swiping');
   el.style.position = 'fixed';
   el.style.top = rect.top + 'px';
@@ -19,8 +24,16 @@ function preparePane(el, rect){
   el.style.bottom = '0';
   el.style.overflowY = 'hidden';
   el.style.transition = 'none';
+  if(isCurrent){
+    const spacer = document.createElement('div');
+    spacer.className = 'screen-swipe-spacer';
+    spacer.style.height = rect.height + 'px';
+    el.insertAdjacentElement('afterend', spacer);
+    el.__swipeSpacer = spacer;
+  }
 }
 function resetPane(el){
+  if(el.__swipeSpacer){ el.__swipeSpacer.remove(); el.__swipeSpacer = null; }
   el.style.cssText = '';
   el.classList.remove('screen-swiping');
 }
@@ -50,8 +63,8 @@ export function animateToScreen(targetName){
   const viewportWidth = window.innerWidth;
 
   targetEl.classList.remove('hidden');
-  preparePane(currentEl, rect);
-  preparePane(targetEl, rect);
+  preparePane(currentEl, rect, true);
+  preparePane(targetEl, rect, false);
   currentEl.style.transform = 'translateX(0px)';
   targetEl.style.transform = `translateX(${dir*viewportWidth}px)`;
   // fuerza reflow: sin esto el navegador puede saltar directo al estado final sin animar
@@ -100,8 +113,8 @@ function onTouchStart(e){
       const rect = currentEl.getBoundingClientRect();
       viewportWidth = window.innerWidth;
       targetEl.classList.remove('hidden');
-      preparePane(currentEl, rect);
-      preparePane(targetEl, rect);
+      preparePane(currentEl, rect, true);
+      preparePane(targetEl, rect, false);
       currentEl.style.transform = 'translateX(0px)';
       targetEl.style.transform = `translateX(${dir*viewportWidth}px)`;
     }
