@@ -123,6 +123,9 @@ function onTouchStart(e){
 
     finishedCurrentEl.style.transition = `transform ${ANIM_MS}ms ease`;
     finishedTargetEl.style.transition = `transform ${ANIM_MS}ms ease`;
+    // fuerza reflow: si no, el navegador puede aplicar transition + transform en el mismo
+    // frame y saltar directo al valor final sin animar (justo lo que se veía como "desaparece")
+    finishedCurrentEl.getBoundingClientRect();
     if(commit){
       finishedCurrentEl.style.transform = `translateX(${dir*viewportWidth}px)`;
       finishedTargetEl.style.transform = 'translateX(0px)';
