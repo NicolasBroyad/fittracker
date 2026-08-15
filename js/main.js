@@ -7,8 +7,7 @@ import { wireAuth, checkSession } from './auth.js';
 import { initTheme } from './theme.js';
 import { openGoalModal, closeGoalModal, submitGoal, clearGoal } from './goal.js';
 import { exportCSV } from './export.js';
-import { switchScreen } from './screens.js';
-import { wireSwipeNav } from './swipe-nav.js';
+import { wireSwipeNav, animateToScreen } from './swipe-nav.js';
 import {
   wireRoutinesDelegation, updateTodayScrollHint,
   closeDayNameModal, saveDayName,
@@ -54,10 +53,10 @@ document.getElementById('btn-goal-clear').addEventListener('click', clearGoal);
 document.getElementById('goal-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='goal-modal-overlay') closeGoalModal(); });
 document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
 
-document.getElementById('tab-screen-home').addEventListener('click', ()=>switchScreen('home'));
-document.getElementById('tab-screen-peso').addEventListener('click', ()=>switchScreen('peso'));
-document.getElementById('tab-screen-rutina').addEventListener('click', ()=>switchScreen('rutina'));
-document.getElementById('tab-screen-gimnasio').addEventListener('click', ()=>switchScreen('gimnasio'));
+document.getElementById('tab-screen-home').addEventListener('click', ()=>animateToScreen('home'));
+document.getElementById('tab-screen-peso').addEventListener('click', ()=>animateToScreen('peso'));
+document.getElementById('tab-screen-rutina').addEventListener('click', ()=>animateToScreen('rutina'));
+document.getElementById('tab-screen-gimnasio').addEventListener('click', ()=>animateToScreen('gimnasio'));
 wireRoutinesDelegation();
 wireSwipeNav();
 
@@ -74,7 +73,7 @@ window.addEventListener('scroll', ()=>{
 
 document.getElementById('home-container').addEventListener('click', (e)=>{
   if(e.target.closest('.home-log-weight-btn')){ openModal(todayISO()); return; }
-  if(e.target.closest('.home-goto-rutina-btn')){ switchScreen('rutina'); return; }
+  if(e.target.closest('.home-goto-rutina-btn')){ animateToScreen('rutina'); return; }
 });
 document.getElementById('gym-container').addEventListener('click', (e)=>{
   const row = e.target.closest('.gym-history-item');

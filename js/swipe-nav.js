@@ -7,13 +7,16 @@ const ANIM_MS = 220;
 
 function screenEl(name){ return document.getElementById('screen-'+name); }
 
-function preparePane(el, left, width){
+// deja el panel fijo exactamente donde estaba en el documento (mismo top/left/width que tenía
+// en flujo normal) — si se usa top:0 a secas, el panel "salta" hacia arriba apenas se activa
+// el gesto, porque su posición natural está más abajo del topbar.
+function preparePane(el, rect){
   el.classList.add('screen-swiping');
   el.style.position = 'fixed';
-  el.style.top = '0';
-  el.style.left = left + 'px';
-  el.style.width = width + 'px';
-  el.style.height = '100vh';
+  el.style.top = rect.top + 'px';
+  el.style.left = rect.left + 'px';
+  el.style.width = rect.width + 'px';
+  el.style.bottom = '0';
   el.style.overflowY = 'hidden';
   el.style.transition = 'none';
 }
@@ -30,6 +33,39 @@ export function wireSwipeNav(){
   const root = document.getElementById('app-root');
   if(!root) return;
   root.addEventListener('touchstart', onTouchStart, { passive: true });
+}
+
+// Misma animación de deslizamiento, pero disparada por un tap en el nav (sin arrastre): las dos
+// pantallas arrancan ya en posición y se animan derecho al resultado final.
+export function animateToScreen(targetName){
+  const curName = getCurrentScreen();
+  if(curName === targetName) { switchScreen(targetName); return; }
+  const idx = SCREEN_ORDER.indexOf(curName);
+  const targetIdx = SCREEN_ORDER.indexOf(targetName);
+  if(idx === -1 || targetIdx === -1){ switchScreen(targetName); return; }
+  const dir = targetIdx > idx ? 1 : -1;
+  const currentEl = screenEl(curName);
+  const targetEl = screenEl(targetName);
+  const rect = currentEl.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+
+  targetEl.classList.remove('hidden');
+  preparePane(currentEl, rect);
+  preparePane(targetEl, rect);
+  currentEl.style.transform = 'translateX(0px)';
+  targetEl.style.transform = `translateX(${dir*viewportWidth}px)`;
+  // fuerza reflow: sin esto el navegador puede saltar directo al estado final sin animar
+  targetEl.getBoundingClientRect();
+
+  currentEl.style.transition = `transform ${ANIM_MS}ms ease`;
+  targetEl.style.transition = `transform ${ANIM_MS}ms ease`;
+  currentEl.style.transform = `translateX(${dir*viewportWidth}px)`;
+  targetEl.style.transform = 'translateX(0px)';
+  setTimeout(() => {
+    resetPane(currentEl);
+    resetPane(targetEl);
+    switchScreen(targetName);
+  }, ANIM_MS + 30);
 }
 
 function onTouchStart(e){
@@ -64,8 +100,8 @@ function onTouchStart(e){
       const rect = currentEl.getBoundingClientRect();
       viewportWidth = window.innerWidth;
       targetEl.classList.remove('hidden');
-      preparePane(currentEl, rect.left, rect.width);
-      preparePane(targetEl, rect.left, rect.width);
+      preparePane(currentEl, rect);
+      preparePane(targetEl, rect);
       currentEl.style.transform = 'translateX(0px)';
       targetEl.style.transform = `translateX(${dir*viewportWidth}px)`;
     }
