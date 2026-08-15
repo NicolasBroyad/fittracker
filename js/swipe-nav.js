@@ -59,7 +59,7 @@ export function animateToScreen(targetName){
 
   currentEl.style.transition = `transform ${ANIM_MS}ms ease`;
   targetEl.style.transition = `transform ${ANIM_MS}ms ease`;
-  currentEl.style.transform = `translateX(${dir*viewportWidth}px)`;
+  currentEl.style.transform = `translateX(${-dir*viewportWidth}px)`;
   targetEl.style.transform = 'translateX(0px)';
   setTimeout(() => {
     resetPane(currentEl);
@@ -127,7 +127,7 @@ function onTouchStart(e){
     // frame y saltar directo al valor final sin animar (justo lo que se veía como "desaparece")
     finishedCurrentEl.getBoundingClientRect();
     if(commit){
-      finishedCurrentEl.style.transform = `translateX(${dir*viewportWidth}px)`;
+      finishedCurrentEl.style.transform = `translateX(${-dir*viewportWidth}px)`;
       finishedTargetEl.style.transform = 'translateX(0px)';
     } else {
       finishedCurrentEl.style.transform = 'translateX(0px)';
