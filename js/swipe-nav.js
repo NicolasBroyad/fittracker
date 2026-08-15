@@ -5,12 +5,17 @@ const MIN_DX = 70;
 const MAX_DY_RATIO = 0.6; // el gesto tiene que ser mayormente horizontal
 
 export function wireSwipeNav(){
+  // Se cuelga de #app-root (no de document/body) a propósito: #login-screen es un hermano,
+  // no un descendiente, así que un touchstart acá nunca llega a tocar la pantalla de login.
+  // En iOS standalone se vio que un listener de touch en un ancestor de un <input> puede romper
+  // el foco/teclado de ese input aunque el listener sea passive y no haga preventDefault — este
+  // scoping evita el problema de raíz en vez de solo esquivarlo adentro del handler.
+  const root = document.getElementById('app-root');
+  if(!root) return;
   let startX = null, startY = null, tracking = false;
 
-  document.addEventListener('touchstart', (e) => {
+  root.addEventListener('touchstart', (e) => {
     if(e.touches.length !== 1) return;
-    const appRoot = document.getElementById('app-root');
-    if(!appRoot || appRoot.classList.contains('hidden')) return; // no logueado: no interferir con el login
     if(isJiggling()) return;
     if(document.querySelector('.modal-overlay:not(.hidden)')) return;
     if(e.target.closest && e.target.closest('.chart-scroll, input, textarea, select, [contenteditable="true"]')) return;
@@ -19,7 +24,7 @@ export function wireSwipeNav(){
     tracking = true;
   }, { passive: true });
 
-  document.addEventListener('touchend', (e) => {
+  root.addEventListener('touchend', (e) => {
     if(!tracking) return;
     tracking = false;
     if(startX == null) return;
@@ -35,5 +40,5 @@ export function wireSwipeNav(){
     else if(dx > 0 && idx > 0) switchScreen(SCREEN_ORDER[idx-1]);
   }, { passive: true });
 
-  document.addEventListener('touchcancel', () => { tracking = false; startX = startY = null; }, { passive: true });
+  root.addEventListener('touchcancel', () => { tracking = false; startX = startY = null; }, { passive: true });
 }
