@@ -1,4 +1,4 @@
-const CACHE_NAME = 'registro-peso-v9';
+const CACHE_NAME = 'registro-peso-v10';
 const ASSETS = [
   '/',
   '/index.html',

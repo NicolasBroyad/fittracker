@@ -77,7 +77,7 @@ body{
 .app{
   max-width: 1180px;
   margin: 0 auto;
-  padding: 28px 20px 80px;
+  padding: calc(28px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) 80px calc(20px + env(safe-area-inset-left));
 }
 
 /* ---------- Header ---------- */
@@ -768,7 +768,7 @@ body{
 /* ---------- Login ---------- */
 .login-screen{
   min-height:100vh; display:flex; align-items:center; justify-content:center;
-  padding:20px;
+  padding:calc(20px + env(safe-area-inset-top)) calc(20px + env(safe-area-inset-right)) calc(20px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-left));
 }
 .login-screen.hidden{ display:none; }
 .login-card{
