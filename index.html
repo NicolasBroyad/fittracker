@@ -22,39 +22,6 @@
   }catch(e){}
 })();
 </script>
-<script>
-// TEMPORAL: muestra en pantalla cualquier error de JS no capturado, para diagnosticar
-// el bug de inputs no interactivos en la PWA de iOS agregada a pantalla de inicio.
-// Sacar una vez resuelto (ver CLAUDE.md, sección Gotchas).
-(function(){
-  function showBanner(msg){
-    var el = document.createElement('div');
-    el.style.cssText = 'position:fixed;top:0;left:0;right:0;background:#c0392b;color:#fff;'
-      + 'padding:10px 12px;font-size:11px;line-height:1.4;z-index:999999;'
-      + 'font-family:monospace;white-space:pre-wrap;word-break:break-word;';
-    el.textContent = msg;
-    var closeBtn = document.createElement('span');
-    closeBtn.textContent = ' [cerrar]';
-    closeBtn.style.cssText = 'text-decoration:underline;';
-    closeBtn.onclick = function(){ el.remove(); };
-    el.appendChild(closeBtn);
-    document.body ? document.body.appendChild(el) : window.addEventListener('DOMContentLoaded', function(){ document.body.appendChild(el); });
-  }
-  window.__diagBanner = showBanner;
-  window.addEventListener('error', function(e){
-    showBanner('JS Error: ' + e.message + '\n' + (e.filename || '') + ':' + e.lineno + ':' + e.colno);
-  });
-  window.addEventListener('unhandledrejection', function(e){
-    var reason = e.reason;
-    showBanner('Promise rejection: ' + (reason && reason.message ? reason.message : String(reason)));
-  });
-  setTimeout(function(){
-    if(typeof window.supabase === 'undefined'){
-      showBanner('Diagnóstico: el script de Supabase (CDN) no cargó a tiempo (¿bloqueado por la red?). window.supabase es undefined 4s después de cargar la página.');
-    }
-  }, 4000);
-})();
-</script>
 </head>
 <body>
 
@@ -419,8 +386,8 @@
 
 <div class="toast" id="toast"></div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" onerror="window.__diagBanner && window.__diagBanner('El script de Supabase (CDN jsdelivr) no pudo cargar. Revisá la conexión / si algo lo está bloqueando.')"></script>
-<script type="module" src="js/main.js" onerror="window.__diagBanner && window.__diagBanner('js/main.js no pudo cargar como módulo.')"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<script type="module" src="js/main.js"></script>
 <script>
 if('serviceWorker' in navigator){
   window.addEventListener('load', ()=>{

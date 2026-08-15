@@ -727,6 +727,13 @@ body{
 }
 .toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
 
+/* pantalla siguiendo el dedo durante un swipe entre tabs (js/swipe-nav.js) */
+.screen-swiping{
+  position:relative; z-index:2;
+  background:var(--paper);
+  box-shadow:0 0 30px rgba(30,42,34,0.18);
+}
+
 /* botón flotante "ir a la rutina de hoy" (aparece cuando esa tarjeta está fuera de vista) */
 .rutina-scroll-hint{
   position:fixed; left:50%; bottom:28px; transform:translateX(-50%);
