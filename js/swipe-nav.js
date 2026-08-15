@@ -7,6 +7,21 @@ const ANIM_MS = 220;
 
 function screenEl(name){ return document.getElementById('screen-'+name); }
 
+function preparePane(el, left, width){
+  el.classList.add('screen-swiping');
+  el.style.position = 'fixed';
+  el.style.top = '0';
+  el.style.left = left + 'px';
+  el.style.width = width + 'px';
+  el.style.height = '100vh';
+  el.style.overflowY = 'hidden';
+  el.style.transition = 'none';
+}
+function resetPane(el){
+  el.style.cssText = '';
+  el.classList.remove('screen-swiping');
+}
+
 // Se cuelga de #app-root (no de document/body) a propósito: #login-screen es un hermano,
 // no un descendiente, así que un touchstart acá nunca llega a tocar la pantalla de login.
 // En iOS standalone se vio que un listener de touch en un ancestro de un <input> puede romper
@@ -26,8 +41,7 @@ function onTouchStart(e){
   const startX = e.touches[0].clientX;
   const startY = e.touches[0].clientY;
   let axis = null; // null | 'h' | 'v' | 'blocked'
-  let el = null;
-  let dir = 0;
+  let currentEl = null, targetEl = null, dir = 0, viewportWidth = 0;
 
   // los listeners de move/end solo existen durante un gesto ya validado por touchstart,
   // nunca están pegados de forma permanente a document (mismo patrón que routines-dnd.js)
@@ -45,47 +59,47 @@ function onTouchStart(e){
       const idx = SCREEN_ORDER.indexOf(getCurrentScreen());
       if(idx + dir < 0 || idx + dir >= SCREEN_ORDER.length){ axis = 'blocked'; teardown(); return; }
       axis = 'h';
-      el = screenEl(getCurrentScreen());
-      el.classList.add('screen-swiping');
-      el.style.transition = 'none';
+      currentEl = screenEl(getCurrentScreen());
+      targetEl = screenEl(SCREEN_ORDER[idx + dir]);
+      const rect = currentEl.getBoundingClientRect();
+      viewportWidth = window.innerWidth;
+      targetEl.classList.remove('hidden');
+      preparePane(currentEl, rect.left, rect.width);
+      preparePane(targetEl, rect.left, rect.width);
+      currentEl.style.transform = 'translateX(0px)';
+      targetEl.style.transform = `translateX(${dir*viewportWidth}px)`;
     }
     if(axis !== 'h') return;
     ev.preventDefault();
-    el.style.transform = `translateX(${dx}px)`;
+    const clamped = Math.max(Math.min(dx, viewportWidth), -viewportWidth);
+    currentEl.style.transform = `translateX(${clamped}px)`;
+    targetEl.style.transform = `translateX(${dir*viewportWidth + clamped}px)`;
   }
 
   function onEnd(ev){
     teardown();
-    if(axis !== 'h' || !el) return;
+    if(axis !== 'h' || !currentEl) return;
     const t = ev.changedTouches && ev.changedTouches[0];
     const dx = t ? t.clientX - startX : 0;
-    const width = window.innerWidth;
-    const commit = Math.abs(dx) > width * COMMIT_RATIO;
-    const outgoing = el;
+    const commit = Math.abs(dx) > viewportWidth * COMMIT_RATIO;
+    const targetName = SCREEN_ORDER[SCREEN_ORDER.indexOf(getCurrentScreen()) + dir];
+    const finishedCurrentEl = currentEl, finishedTargetEl = targetEl;
 
-    outgoing.style.transition = `transform ${ANIM_MS}ms ease`;
-    if(!commit){
-      outgoing.style.transform = 'translateX(0px)';
-      setTimeout(() => { outgoing.style.cssText = ''; outgoing.classList.remove('screen-swiping'); }, ANIM_MS + 30);
-      return;
+    finishedCurrentEl.style.transition = `transform ${ANIM_MS}ms ease`;
+    finishedTargetEl.style.transition = `transform ${ANIM_MS}ms ease`;
+    if(commit){
+      finishedCurrentEl.style.transform = `translateX(${dir*viewportWidth}px)`;
+      finishedTargetEl.style.transform = 'translateX(0px)';
+    } else {
+      finishedCurrentEl.style.transform = 'translateX(0px)';
+      finishedTargetEl.style.transform = `translateX(${dir*viewportWidth}px)`;
     }
-
-    outgoing.style.transform = `translateX(${dir*width}px)`;
-    const nextScreen = SCREEN_ORDER[SCREEN_ORDER.indexOf(getCurrentScreen()) + dir];
     setTimeout(() => {
-      outgoing.style.cssText = '';
-      outgoing.classList.remove('screen-swiping');
-      switchScreen(nextScreen).then(() => {
-        const incoming = screenEl(nextScreen);
-        incoming.classList.add('screen-swiping');
-        incoming.style.transition = 'none';
-        incoming.style.transform = `translateX(${dir*width}px)`;
-        incoming.getBoundingClientRect(); // fuerza reflow antes de animar a 0
-        incoming.style.transition = `transform ${ANIM_MS}ms ease`;
-        incoming.style.transform = 'translateX(0px)';
-        setTimeout(() => { incoming.style.cssText = ''; incoming.classList.remove('screen-swiping'); }, ANIM_MS + 30);
-      });
-    }, ANIM_MS);
+      resetPane(finishedCurrentEl);
+      resetPane(finishedTargetEl);
+      if(commit) switchScreen(targetName);
+      else finishedTargetEl.classList.add('hidden');
+    }, ANIM_MS + 30);
   }
 
   function teardown(){
