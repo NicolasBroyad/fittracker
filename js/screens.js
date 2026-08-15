@@ -22,8 +22,6 @@ export async function switchScreen(screen){
     document.getElementById('screen-'+s).classList.toggle('hidden', s !== screen);
     document.getElementById('tab-screen-'+s).classList.toggle('active', s === screen);
   });
-  document.getElementById('btn-log-today').classList.toggle('hidden', screen !== 'peso');
-
   if(screen === 'home'){
     await ensureRoutinesLoaded();
     await renderHome();

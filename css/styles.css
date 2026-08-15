@@ -89,25 +89,6 @@ body{
   margin-bottom:28px;
   flex-wrap:wrap;
 }
-.btn-primary{
-  background:var(--accent);
-  color:var(--paper-card);
-  border:none;
-  font-family:'Inter',sans-serif;
-  font-weight:600;
-  font-size:0.85rem;
-  padding:11px 18px;
-  border-radius:999px;
-  cursor:pointer;
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  transition:transform .12s ease, background .15s ease;
-  box-shadow: 0 2px 0 rgba(30,42,34,0.15);
-}
-.btn-primary:hover{ background:#274429; transform:translateY(-1px); }
-.btn-primary:active{ transform:translateY(0px); }
-
 /* ---------- Stat cards ---------- */
 .stats-row{
   display:grid;
@@ -172,6 +153,20 @@ body{
   font-family:'JetBrains Mono', monospace;
   font-weight:600;
 }
+.lcd-log-btn{
+  align-self:flex-start;
+  margin-top:12px;
+  background:rgba(147,185,142,0.15);
+  color:var(--lcd-accent);
+  border:1px solid rgba(147,185,142,0.4);
+  border-radius:999px;
+  padding:6px 14px;
+  font-size:0.72rem;
+  font-weight:600;
+  cursor:pointer;
+  font-family:'Inter',sans-serif;
+}
+.lcd-log-btn:hover{ background:rgba(147,185,142,0.28); }
 .card-lcd::after{
   content:"";
   position:absolute;

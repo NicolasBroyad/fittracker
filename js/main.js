@@ -38,7 +38,7 @@ document.getElementById('chart-range-big').addEventListener('change', (e)=>setCh
 document.getElementById('btn-chart-expand').addEventListener('click', openChartModal);
 document.getElementById('chart-modal-close').addEventListener('click', closeChartModal);
 document.getElementById('chart-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='chart-modal-overlay') closeChartModal(); });
-document.getElementById('btn-log-today').addEventListener('click', ()=>openModal(todayISO()));
+document.getElementById('lcd-log-today-btn').addEventListener('click', ()=>openModal(todayISO()));
 document.getElementById('btn-cancel').addEventListener('click', closeModal);
 document.getElementById('btn-save').addEventListener('click', saveEntry);
 document.getElementById('btn-delete').addEventListener('click', deleteEntry);

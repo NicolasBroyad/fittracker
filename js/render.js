@@ -15,6 +15,8 @@ export function renderStats(){
     ? 'Promedio 7 días: '+weeklyAvg.avg.toFixed(2)+' kg'
     : '';
 
+  document.getElementById('lcd-log-today-btn').classList.toggle('hidden', !!cur && cur.date === todayISO());
+
   const trend = computeTrend();
   const elVal = document.getElementById('stat-trend');
   const elSub = document.getElementById('stat-trend-sub');
