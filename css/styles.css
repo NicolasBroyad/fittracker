@@ -524,6 +524,10 @@ body{
   gap:14px;
 }
 .routine-day-panel{ margin-top:0; }
+.routine-day-muscle-groups{
+  display:flex; flex-wrap:wrap; gap:6px;
+  margin:-6px 0 14px;
+}
 
 /* tarjeta del día de hoy: mismo tratamiento "LCD" que la tarjeta de peso actual */
 .routine-day-panel.is-today{
@@ -548,6 +552,7 @@ body{
 .routine-day-panel.is-today .ex-number{ color:var(--lcd-accent); }
 .routine-day-panel.is-today .ex-name{ color:var(--lcd-text); }
 .routine-day-panel.is-today .ex-target{ color:var(--lcd-text); background:rgba(147,185,142,0.16); }
+.routine-day-panel.is-today .ex-muscle-badge{ color:var(--lcd-text); background:rgba(147,185,142,0.16); }
 .routine-day-panel.is-today .ex-calendar-btn{ color:#B9C7B4; }
 .routine-day-panel.is-today .ex-calendar-btn:hover{ color:var(--lcd-text); }
 .routine-day-panel.is-today .ex-stat{ color:var(--lcd-accent); }

@@ -60,6 +60,15 @@ function todayDayOfWeek(){
   return ((new Date().getDay()+6)%7) + 1; // 1=lunes..7=domingo
 }
 
+function muscleGroupBadgesHtml(exercises){
+  const groups = [];
+  exercises.forEach(ex => { if(ex.muscle_group && !groups.includes(ex.muscle_group)) groups.push(ex.muscle_group); });
+  if(groups.length === 0) return '';
+  return '<div class="routine-day-muscle-groups">'
+    + groups.map(g => `<span class="ex-muscle-badge">${escapeHtml(MUSCLE_GROUP_LABELS[g] || g)}</span>`).join('')
+    + '</div>';
+}
+
 function dayPanelHtml(dayOfWeek, logsByExercise, todayDow){
   const day = routineDays[dayOfWeek] || { name: '', is_rest: false };
   const isRest = !!day.is_rest;
@@ -85,6 +94,7 @@ function dayPanelHtml(dayOfWeek, logsByExercise, todayDow){
       </div>
       <button class="btn-expand routine-day-edit" data-day="${dayOfWeek}" title="Nombrar entrenamiento / descanso">${PENCIL_SVG}</button>
     </div>
+    ${isRest ? '' : muscleGroupBadgesHtml(exercises)}
     <div class="exercise-list">${body}</div>
     ${isRest ? '' : `<button class="btn-add-exercise" data-day="${dayOfWeek}">+ Ejercicio</button>`}
   </div>`;
