@@ -10,15 +10,30 @@ export function groupLogsBySession(logs){
   return Array.from(byDate.entries()).map(([date, sets]) => ({ date, sets }));
 }
 
-// sets: [{ weight, reps }] en orden de ejecución -> "85kg x 6, 80kg x 8-7-6"
-export function formatSessionSets(sets){
+// sets: [{ weight, reps }] en orden de ejecución -> agrupa series consecutivas con el mismo peso
+function groupSetsByWeight(sets){
   const groups = [];
   sets.forEach(s => {
     const last = groups[groups.length-1];
     if(last && last.weight === s.weight){ last.reps.push(s.reps); }
     else groups.push({ weight: s.weight, reps: [s.reps] });
   });
-  return groups.map(g => (g.weight != null ? Number(g.weight)+'kg' : '—') + ' x ' + g.reps.join('-')).join(', ');
+  return groups;
+}
+
+// sets: [{ weight, reps }] en orden de ejecución -> "85kg x 6, 80kg x 8-7-6"
+export function formatSessionSets(sets){
+  return groupSetsByWeight(sets)
+    .map(g => (g.weight != null ? Number(g.weight)+'kg' : '—') + ' x ' + g.reps.join('-'))
+    .join(', ');
+}
+
+// versión compacta para espacios chicos (ej. celda de calendario) -> "85×6\n80×8-7-6"
+// (una línea por peso distinto, para que no se corte un número al hacer word-wrap)
+export function formatSessionSetsCompact(sets){
+  return groupSetsByWeight(sets)
+    .map(g => (g.weight != null ? Number(g.weight) : '—') + '×' + g.reps.join('-'))
+    .join('\n');
 }
 
 // logs: [{ session_date, set_number, weight, reps }] (todo el historial de un ejercicio, cualquier orden)

@@ -50,6 +50,6 @@ export function setExerciseCalendarExerciseId(v){ exerciseCalendarExerciseId = v
 export let exerciseCalendarMonth = new Date();
 export function setExerciseCalendarMonth(v){ exerciseCalendarMonth = v; }
 
-// Set de fechas ISO con registros, para el ejercicio abierto en el calendario
-export let exerciseCalendarLogDates = new Set();
-export function setExerciseCalendarLogDates(v){ exerciseCalendarLogDates = v; }
+// Map fecha ISO -> sets [{weight,reps}], para el ejercicio abierto en el calendario
+export let exerciseCalendarSessions = new Map();
+export function setExerciseCalendarSessions(v){ exerciseCalendarSessions = v; }

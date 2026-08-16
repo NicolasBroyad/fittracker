@@ -6,7 +6,7 @@ import {
   sessionEditDate, setSessionEditDate, sessionSetRows, setSessionSetRows,
   exerciseCalendarExerciseId, setExerciseCalendarExerciseId,
   exerciseCalendarMonth, setExerciseCalendarMonth,
-  exerciseCalendarLogDates, setExerciseCalendarLogDates,
+  exerciseCalendarSessions, setExerciseCalendarSessions,
 } from './routines-state.js';
 import {
   loadRoutineDays, loadExercisesWithDays, saveRoutineDay,
@@ -17,7 +17,7 @@ import {
 import { renderRoutines } from './routines-render.js';
 import { renderGym } from './gym-render.js';
 import { renderHome } from './home-render.js';
-import { groupLogsBySession, formatSessionSets, buildExercisesByDay } from './routines-derived.js';
+import { groupLogsBySession, formatSessionSets, formatSessionSetsCompact, buildExercisesByDay } from './routines-derived.js';
 import { wireDragReorder, isJiggling, exitJiggleMode } from './routines-dnd.js';
 import { showToast, escapeHtml, todayISO, fromISO, toISO, fmtShort, MONTHS, DOW } from './utils.js';
 
@@ -329,7 +329,8 @@ export async function openExerciseCalendar(exerciseId){
   setExerciseCalendarExerciseId(exerciseId);
   document.getElementById('exercise-cal-title').textContent = exercise.name;
   const logs = await loadExerciseLogs(exerciseId);
-  setExerciseCalendarLogDates(new Set(logs.map(l => l.session_date)));
+  const sessions = new Map(groupLogsBySession(logs).map(s => [s.date, s.sets]));
+  setExerciseCalendarSessions(sessions);
   const now = new Date(); now.setDate(1); now.setHours(0,0,0,0);
   setExerciseCalendarMonth(now);
   renderExerciseCalendar();
@@ -368,10 +369,12 @@ export function renderExerciseCalendar(){
     const d = new Date(exerciseCalendarMonth.getFullYear(), exerciseCalendarMonth.getMonth(), day);
     const iso = toISO(d);
     const isFuture = iso > today;
-    const hasLog = exerciseCalendarLogDates.has(iso);
+    const sets = exerciseCalendarSessions.get(iso);
+    const hasLog = !!sets;
     const el = document.createElement('div');
     el.className = 'cal-day' + (isFuture ? ' future' : '') + (iso === today ? ' today' : '') + (hasLog ? ' has-entry' : ' no-entry');
-    el.innerHTML = '<span>'+day+'</span><span class="dot"></span>';
+    el.innerHTML = '<span class="ex-cal-day-num">'+day+'</span>'
+      + (hasLog ? '<span class="ex-cal-day-summary">'+escapeHtml(formatSessionSetsCompact(sets))+'</span>' : '');
     if(!isFuture){
       el.addEventListener('click', () => pickExerciseCalendarDay(iso));
     }
