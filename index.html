@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Registro de Peso</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -193,6 +193,7 @@
 
   <div id="screen-rutina" class="hidden">
     <div class="routine-days" id="routine-days-container"></div>
+    <div id="exercise-catalog-container"></div>
   </div>
 
   <div id="screen-gimnasio" class="hidden">
@@ -312,7 +313,6 @@
 <div class="modal-overlay hidden" id="exercise-modal-overlay">
   <div class="modal">
     <h3 id="exercise-modal-title">Nuevo ejercicio</h3>
-    <div class="modal-date" id="exercise-modal-day-label"></div>
     <div class="field">
       <label for="exercise-input-name">Ejercicio</label>
       <input type="text" id="exercise-input-name" autocomplete="off" placeholder="Press banca">
@@ -327,10 +327,49 @@
         <input type="text" id="exercise-input-reps" autocomplete="off" placeholder="6-8">
       </div>
     </div>
+    <div class="field">
+      <label for="exercise-input-muscle">Grupo muscular</label>
+      <select id="exercise-input-muscle">
+        <option value="">Sin definir</option>
+        <option value="Pierna">Pierna</option>
+        <option value="Pecho">Pecho</option>
+        <option value="Hombro">Hombro</option>
+        <option value="Tricep">Tríceps</option>
+        <option value="Biceps">Bíceps</option>
+        <option value="Espalda">Espalda</option>
+      </select>
+    </div>
+    <div class="field">
+      <label>Días asignados</label>
+      <div class="exercise-day-checkboxes" id="exercise-day-checkboxes">
+        <label class="day-checkbox"><input type="checkbox" class="exercise-day-checkbox" value="1"><span>Lun</span></label>
+        <label class="day-checkbox"><input type="checkbox" class="exercise-day-checkbox" value="2"><span>Mar</span></label>
+        <label class="day-checkbox"><input type="checkbox" class="exercise-day-checkbox" value="3"><span>Mié</span></label>
+        <label class="day-checkbox"><input type="checkbox" class="exercise-day-checkbox" value="4"><span>Jue</span></label>
+        <label class="day-checkbox"><input type="checkbox" class="exercise-day-checkbox" value="5"><span>Vie</span></label>
+        <label class="day-checkbox"><input type="checkbox" class="exercise-day-checkbox" value="6"><span>Sáb</span></label>
+        <label class="day-checkbox"><input type="checkbox" class="exercise-day-checkbox" value="7"><span>Dom</span></label>
+      </div>
+    </div>
     <div class="modal-actions">
       <button class="btn btn-delete hidden" id="exercise-modal-delete">Borrar</button>
       <button class="btn btn-cancel" id="exercise-modal-cancel">Cancelar</button>
       <button class="btn btn-save" id="exercise-modal-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="assign-modal-overlay">
+  <div class="modal">
+    <h3 id="assign-modal-title">Agregar ejercicio</h3>
+    <div class="modal-date" id="assign-modal-day-label"></div>
+    <div class="field">
+      <input type="text" id="assign-search-input" autocomplete="off" placeholder="Buscar ejercicio...">
+    </div>
+    <div class="assign-exercise-list" id="assign-exercise-list"></div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="assign-modal-cancel">Cancelar</button>
+      <button class="btn btn-save" id="assign-modal-create">+ Crear nuevo</button>
     </div>
   </div>
 </div>

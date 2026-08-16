@@ -13,6 +13,7 @@ import {
   closeDayNameModal, saveDayName,
   closeExerciseModal, saveExerciseModal, deleteExerciseModal,
   closeSessionModal, saveSession, openSessionModal,
+  closeAssignModal, renderAssignList, createFromAssignModal,
 } from './routines.js';
 
 initTheme();
@@ -89,6 +90,10 @@ document.getElementById('exercise-modal-overlay').addEventListener('click', (e)=
 document.getElementById('session-modal-close').addEventListener('click', closeSessionModal);
 document.getElementById('session-modal-save').addEventListener('click', saveSession);
 document.getElementById('session-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='session-modal-overlay') closeSessionModal(); });
+document.getElementById('assign-modal-cancel').addEventListener('click', closeAssignModal);
+document.getElementById('assign-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='assign-modal-overlay') closeAssignModal(); });
+document.getElementById('assign-search-input').addEventListener('input', (e)=>renderAssignList(e.target.value));
+document.getElementById('assign-modal-create').addEventListener('click', createFromAssignModal);
 
 wireAuth();
 checkSession();

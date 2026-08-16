@@ -13,6 +13,7 @@ export async function startApp(){
 export function showLogin(){
   document.getElementById('app-root').classList.add('hidden');
   document.getElementById('login-screen').classList.remove('hidden');
+  document.getElementById('rutina-scroll-hint').classList.add('hidden');
 }
 
 export function wireAuth(){

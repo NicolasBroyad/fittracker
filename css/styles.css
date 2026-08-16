@@ -287,10 +287,17 @@ body{
 .cal-day.empty{ cursor:default; }
 .cal-day.future{ color:var(--ink-faint); cursor:not-allowed; }
 .cal-day.today{ border-color:var(--brass); font-weight:700; }
+.cal-day-info{
+  display:flex; align-items:center; gap:3px;
+  margin-top:3px;
+}
 .cal-day .dot{
   width:5px;height:5px;border-radius:50%;
   background:var(--accent);
-  margin-top:3px;
+  flex-shrink:0;
+}
+.cal-weight{
+  font-size:0.55rem; color:var(--ink-soft); line-height:1;
 }
 .cal-day.has-note .dot{ background:var(--brass); box-shadow:0 0 0 2px var(--brass-soft); }
 .cal-day.no-entry .dot{ background:transparent; }
@@ -484,8 +491,8 @@ body{
   border-radius:var(--radius-sm); padding:10px 12px; font-family:'JetBrains Mono', monospace;
   font-size:1rem; color:var(--ink); resize:none;
 }
-.field textarea{ font-family:'Inter',sans-serif; font-size:0.85rem; min-height:60px; }
-.field select{ font-family:'Inter',sans-serif; font-size:0.9rem; cursor:pointer; }
+.field textarea{ font-family:'Inter',sans-serif; font-size:1rem; min-height:60px; }
+.field select{ font-family:'Inter',sans-serif; font-size:1rem; cursor:pointer; }
 .field input:focus, .field textarea:focus, .field select:focus{ outline:2px solid var(--accent); outline-offset:1px; }
 .modal-actions{ display:flex; gap:8px; margin-top:18px; }
 .btn{
@@ -518,6 +525,7 @@ body{
 .routine-day-panel.is-today::after{
   content:""; position:absolute; right:-30px; top:-30px; width:110px; height:110px;
   border-radius:50%; background:radial-gradient(circle, rgba(147,185,142,0.18), transparent 70%);
+  pointer-events:none;
 }
 .routine-today-eyebrow{
   text-transform:uppercase; letter-spacing:0.1em; font-size:0.62rem; font-weight:700;
@@ -538,6 +546,8 @@ body{
 .routine-day-panel.is-today .ex-stat-label,
 .routine-day-panel.is-today .ex-stat-empty,
 .routine-day-panel.is-today .ex-stat-date{ color:#8A9A85; }
+.routine-day-panel.is-today .ex-remove-btn{ color:#8A9A85; }
+.routine-day-panel.is-today .ex-remove-btn:hover{ color:var(--lcd-accent); }
 .routine-day-panel.is-today .btn-add-alt{ color:#8A9A85; }
 .routine-day-panel.is-today .btn-add-alt:hover{ color:var(--lcd-accent); }
 .routine-day-panel.is-today .btn-add-exercise{ border-color:rgba(147,185,142,0.4); color:#B9C7B4; }
@@ -591,6 +601,11 @@ body{
 .ex-stat-label{ color:var(--ink-faint); font-family:'Inter',sans-serif; font-size:0.68rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; flex:0 0 auto; min-width:44px; }
 .ex-stat-empty{ color:var(--ink-faint); font-family:'Inter',sans-serif; font-weight:400; font-style:italic; }
 .ex-stat-date{ color:var(--ink-faint); font-family:'Inter',sans-serif; font-weight:400; font-style:italic; }
+.ex-remove-btn{
+  border:none; background:transparent; color:var(--ink-faint); cursor:pointer;
+  padding:4px; flex:0 0 auto; display:flex; align-items:center;
+}
+.ex-remove-btn:hover{ color:#b3452f; }
 .btn-add-alt{
   margin-top:6px; border:none; background:transparent; color:var(--ink-faint);
   font-size:0.72rem; font-weight:600; cursor:pointer; font-family:'Inter',sans-serif; padding:4px 6px;
@@ -607,6 +622,47 @@ body{
   border-style:solid; border-color:var(--accent); background:var(--accent); color:var(--paper-card); font-weight:700;
 }
 .btn-add-exercise.btn-add-exercise-done:hover{ background:#274429; }
+
+/* ---------- Ejercicios (catálogo, panel al pie de Rutina) ---------- */
+#exercise-catalog-container{ margin-top:14px; }
+.exercise-catalog-row{ cursor:pointer; }
+.ex-muscle-badge{
+  font-size:0.66rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;
+  color:var(--accent); background:var(--accent-soft); border-radius:999px; padding:3px 9px; flex:0 0 auto;
+}
+.ex-catalog-days-row{ margin-top:6px; padding-left:2px; }
+.ex-catalog-days{
+  font-family:'JetBrains Mono', monospace; font-size:0.7rem; font-weight:600; text-transform:uppercase;
+  letter-spacing:0.04em; color:var(--ink-soft);
+}
+.ex-catalog-days-empty{ color:var(--ink-faint); font-style:italic; text-transform:none; font-family:'Inter',sans-serif; }
+
+/* ---------- Modal de ejercicio: días asignados ---------- */
+.exercise-day-checkboxes{ display:flex; flex-wrap:wrap; gap:8px; }
+.day-checkbox{
+  display:flex; align-items:center; gap:5px; padding:6px 10px; border:1px solid var(--line);
+  border-radius:999px; cursor:pointer; font-size:0.78rem; color:var(--ink-soft);
+}
+.day-checkbox input{ width:14px; height:14px; accent-color:var(--accent); cursor:pointer; }
+.day-checkbox:has(input:checked){ border-color:var(--accent); background:var(--accent-soft); color:var(--ink); }
+
+/* ---------- Modal de agregar ejercicio existente a un día ---------- */
+.assign-exercise-list{ max-height:280px; overflow-y:auto; margin-bottom:14px; }
+.assign-exercise-item{
+  display:flex; align-items:center; justify-content:space-between; gap:10px; padding:10px 2px;
+}
+.assign-exercise-item + .assign-exercise-item{ border-top:1px dashed var(--line); }
+.assign-exercise-info{ display:flex; align-items:center; gap:8px; min-width:0; }
+.assign-exercise-name{ font-size:0.88rem; font-weight:600; color:var(--ink); }
+.assign-exercise-muscle{
+  font-size:0.64rem; font-weight:600; text-transform:uppercase; letter-spacing:0.04em;
+  color:var(--accent); background:var(--accent-soft); border-radius:999px; padding:2px 8px; flex:0 0 auto;
+}
+.assign-exercise-add{
+  border:1px solid var(--line-strong); background:transparent; border-radius:999px; padding:5px 12px;
+  font-size:0.74rem; font-weight:600; color:var(--ink-soft); cursor:pointer; flex:0 0 auto; font-family:'Inter',sans-serif;
+}
+.assign-exercise-add:hover{ background:var(--accent-soft); color:var(--ink); border-color:var(--accent); }
 
 /* ---------- Home screen ---------- */
 .home-hero{
@@ -705,7 +761,7 @@ body{
 .session-set-row input{
   flex:1; min-width:0; border:1px solid var(--line-strong); background:var(--paper);
   border-radius:var(--radius-sm); padding:9px 10px; font-family:'JetBrains Mono', monospace;
-  font-size:0.9rem; color:var(--ink);
+  font-size:1rem; color:var(--ink);
 }
 .session-set-row input:focus{ outline:2px solid var(--accent); outline-offset:1px; }
 .session-set-x{ color:var(--ink-faint); font-size:0.85rem; flex:0 0 auto; }

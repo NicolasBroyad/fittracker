@@ -1,5 +1,5 @@
 import { routineExercises } from './routines-state.js';
-import { updateExerciseOrderIndex } from './routines-storage.js';
+import { updateExerciseDayOrderIndex } from './routines-storage.js';
 import { renderRoutines } from './routines-render.js';
 
 const LONG_PRESS_MS = 550;
@@ -128,7 +128,7 @@ async function persistNewOrder(dayOfWeek, list){
     const oldOrder = Number(el.dataset.order);
     if(oldOrder === i) return;
     exercises.filter(ex => ex.order_index === oldOrder).forEach(ex => {
-      updates.push(updateExerciseOrderIndex(ex.id, i).then(() => { ex.order_index = i; }));
+      updates.push(updateExerciseDayOrderIndex(ex.id, dayOfWeek, i).then(() => { ex.order_index = i; }));
     });
   });
   if(updates.length === 0) return;
@@ -141,7 +141,7 @@ export function wireDragReorder(){
   document.getElementById('routine-days-container').addEventListener('pointerdown', (e)=>{
     if(e.button !== undefined && e.button !== 0) return;
     const slotEl = e.target.closest('.exercise-slot');
-    if(!slotEl || e.target.closest('.btn-add-alt')) return;
+    if(!slotEl || e.target.closest('.btn-add-alt') || e.target.closest('.ex-remove-btn') || e.target.closest('.ex-calendar-btn')) return;
     const panel = slotEl.closest('.routine-day-panel');
     const dayOfWeek = Number(panel.dataset.day);
 

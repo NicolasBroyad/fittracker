@@ -73,27 +73,61 @@ export function computeBestSession(logs){
 
 function dayOfWeekOf(date){ return ((date.getDay()+6)%7) + 1; } // 1=lunes..7=domingo
 
-// día de hoy: qué toca, si es descanso, y cuántos de sus ejercicios ya tienen datos hoy
+// agrupa el catálogo de ejercicios (routines-state.exercisesById) por día de la semana,
+// según las asignaciones de cada uno; cada día queda ordenado por su order_index propio.
+// -> { dayOfWeek: [{ id, name, sets_target, reps_target, muscle_group, order_index, variant }] }
+export function buildExercisesByDay(exercisesById){
+  const result = {};
+  Object.values(exercisesById).forEach(ex => {
+    (ex.days || []).forEach(d => {
+      if(!result[d.day_of_week]) result[d.day_of_week] = [];
+      result[d.day_of_week].push({
+        id: ex.id, name: ex.name, sets_target: ex.sets_target, reps_target: ex.reps_target,
+        muscle_group: ex.muscle_group, order_index: d.order_index, variant: d.variant || 0,
+      });
+    });
+  });
+  Object.keys(result).forEach(k => result[k].sort((a, b) => a.order_index - b.order_index));
+  return result;
+}
+
+// agrupa los ejercicios de un día en slots por order_index, ordenados; cada slot trae sus alternativas
+// (variant 0=principal, 1="b", 2="c"...) ordenadas
+export function groupIntoSlots(exercises){
+  const map = new Map();
+  exercises.forEach(ex => {
+    if(!map.has(ex.order_index)) map.set(ex.order_index, []);
+    map.get(ex.order_index).push(ex);
+  });
+  const slots = Array.from(map.entries()).map(([orderIndex, items]) => ({
+    orderIndex, items: items.slice().sort((a,b) => a.variant - b.variant),
+  }));
+  slots.sort((a,b) => a.orderIndex - b.orderIndex);
+  return slots;
+}
+
+// día de hoy: qué toca, si es descanso, y cuántos slots ya tienen datos hoy (cualquiera de sus alternativas)
 export function getTodayStatus(routineDays, routineExercises, logsByExercise){
   const today = new Date(); today.setHours(0,0,0,0);
   const dayOfWeek = dayOfWeekOf(today);
   const todayIso = toISO(today);
   const day = routineDays[dayOfWeek] || { name: '', is_rest: false };
   const exercises = routineExercises[dayOfWeek] || [];
+  const slots = groupIntoSlots(exercises);
   const isRest = !!day.is_rest;
   const hasPlan = exercises.length > 0;
-  const loggedIds = new Set(
-    exercises.filter(ex => (logsByExercise[ex.id] || []).some(l => l.session_date === todayIso)).map(ex => ex.id)
-  );
+  const loggedSlotCount = slots.filter(slot =>
+    slot.items.some(ex => (logsByExercise[ex.id] || []).some(l => l.session_date === todayIso))
+  ).length;
   return {
     dayOfWeek,
     dayName: day.name || '',
     isRest,
     hasPlan,
-    totalExercises: exercises.length,
-    loggedCount: loggedIds.size,
-    isFullyLogged: hasPlan && loggedIds.size === exercises.length,
-    isAnyLogged: loggedIds.size > 0,
+    totalExercises: slots.length,
+    loggedCount: loggedSlotCount,
+    isFullyLogged: hasPlan && loggedSlotCount === slots.length,
+    isAnyLogged: loggedSlotCount > 0,
   };
 }
 
@@ -129,25 +163,24 @@ export function computeGymStreak(routineDays, routineExercises, logsByExercise){
 
 // top ejercicios por mejora: peso máximo de la primera sesión vs. el mejor registro actual.
 // Requiere al menos 2 sesiones distintas y una mejora positiva.
-export function computeMostImproved(routineExercises, logsByExercise, topN){
+// exercises: lista de ejercicios únicos del catálogo (Object.values(exercisesById))
+export function computeMostImproved(exercises, logsByExercise, topN){
   const results = [];
-  Object.entries(routineExercises).forEach(([dow, exercises]) => {
-    exercises.forEach(ex => {
-      const logs = logsByExercise[ex.id] || [];
-      const withWeight = logs.filter(l => l.weight != null);
-      if(withWeight.length === 0) return;
-      let firstDate = withWeight[0].session_date;
-      withWeight.forEach(l => { if(l.session_date < firstDate) firstDate = l.session_date; });
-      const firstWeight = Math.max(...withWeight.filter(l => l.session_date === firstDate).map(l => Number(l.weight)));
-      const best = computeBestSession(logs);
-      if(!best || best.date === firstDate) return;
-      const bestWeight = Math.max(...best.sets.filter(s => s.weight != null).map(s => Number(s.weight)));
-      const delta = bestWeight - firstWeight;
-      if(delta <= 0) return;
-      results.push({
-        exerciseId: ex.id, exerciseName: ex.name, dayOfWeek: Number(dow),
-        firstWeight, firstDate, bestWeight, bestDate: best.date, delta,
-      });
+  exercises.forEach(ex => {
+    const logs = logsByExercise[ex.id] || [];
+    const withWeight = logs.filter(l => l.weight != null);
+    if(withWeight.length === 0) return;
+    let firstDate = withWeight[0].session_date;
+    withWeight.forEach(l => { if(l.session_date < firstDate) firstDate = l.session_date; });
+    const firstWeight = Math.max(...withWeight.filter(l => l.session_date === firstDate).map(l => Number(l.weight)));
+    const best = computeBestSession(logs);
+    if(!best || best.date === firstDate) return;
+    const bestWeight = Math.max(...best.sets.filter(s => s.weight != null).map(s => Number(s.weight)));
+    const delta = bestWeight - firstWeight;
+    if(delta <= 0) return;
+    results.push({
+      exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.muscle_group,
+      firstWeight, firstDate, bestWeight, bestDate: best.date, delta,
     });
   });
   results.sort((a,b) => b.delta - a.delta);
@@ -155,30 +188,15 @@ export function computeMostImproved(routineExercises, logsByExercise, topN){
 }
 
 // todas las sesiones de todos los ejercicios, más recientes primero
-export function computeAllSessionsHistory(routineExercises, logsByExercise){
+// exercises: lista de ejercicios únicos del catálogo (Object.values(exercisesById))
+export function computeAllSessionsHistory(exercises, logsByExercise){
   const rows = [];
-  Object.entries(routineExercises).forEach(([dow, exercises]) => {
-    exercises.forEach(ex => {
-      const logs = logsByExercise[ex.id] || [];
-      groupLogsBySession(logs).forEach(s => {
-        rows.push({ date: s.date, exerciseId: ex.id, exerciseName: ex.name, dayOfWeek: Number(dow), sets: s.sets });
-      });
+  exercises.forEach(ex => {
+    const logs = logsByExercise[ex.id] || [];
+    groupLogsBySession(logs).forEach(s => {
+      rows.push({ date: s.date, exerciseId: ex.id, exerciseName: ex.name, sets: s.sets });
     });
   });
   rows.sort((a,b) => b.date.localeCompare(a.date));
   return rows;
-}
-
-// agrupa los ejercicios de un día en slots por order_index, ordenados; cada slot trae sus variantes ordenadas
-export function groupIntoSlots(exercises){
-  const map = new Map();
-  exercises.forEach(ex => {
-    if(!map.has(ex.order_index)) map.set(ex.order_index, []);
-    map.get(ex.order_index).push(ex);
-  });
-  const slots = Array.from(map.entries()).map(([orderIndex, items]) => ({
-    orderIndex, items: items.slice().sort((a,b) => a.variant - b.variant),
-  }));
-  slots.sort((a,b) => a.orderIndex - b.orderIndex);
-  return slots;
 }

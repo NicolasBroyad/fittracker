@@ -1,7 +1,7 @@
-import { routineDays, routineExercises, DAY_NAMES } from './routines-state.js';
+import { routineDays, routineExercises, exercisesById, MUSCLE_GROUP_LABELS } from './routines-state.js';
 import { loadAllLogsGroupedByExercise } from './routines-storage.js';
 import { computeGymStreak, computeMostImproved, computeAllSessionsHistory, formatSessionSets } from './routines-derived.js';
-import { fromISO, fmtShort, DOW, escapeHtml } from './utils.js';
+import { fromISO, fmtShort, escapeHtml } from './utils.js';
 
 function streakCardHtml(count){
   let ticks = '';
@@ -21,7 +21,7 @@ function improvedListHtml(items){
   return items.map(it => `<div class="improved-item">
     <div class="improved-main">
       <span class="improved-name">${escapeHtml(it.exerciseName)}</span>
-      <span class="improved-day">${DOW[it.dayOfWeek-1]}</span>
+      ${it.muscleGroup ? `<span class="improved-day">${escapeHtml(MUSCLE_GROUP_LABELS[it.muscleGroup] || it.muscleGroup)}</span>` : ''}
     </div>
     <div class="improved-detail">
       <span>${it.firstWeight}kg</span>
@@ -47,9 +47,10 @@ export async function renderGym(){
   const container = document.getElementById('gym-container');
   if(!container) return;
   const logsByExercise = await loadAllLogsGroupedByExercise();
+  const exercisesList = Object.values(exercisesById);
   const streak = computeGymStreak(routineDays, routineExercises, logsByExercise);
-  const improved = computeMostImproved(routineExercises, logsByExercise, 5);
-  const history = computeAllSessionsHistory(routineExercises, logsByExercise);
+  const improved = computeMostImproved(exercisesList, logsByExercise, 5);
+  const history = computeAllSessionsHistory(exercisesList, logsByExercise);
 
   container.innerHTML = streakCardHtml(streak)
     + `<div class="panel">

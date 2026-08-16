@@ -72,10 +72,7 @@ export function renderCalendar(){
     const isFuture = iso > today;
     const el = document.createElement('div');
     el.className = 'cal-day' + (isFuture?' future':'') + (iso===today?' today':'') + (entries[iso] ? ' has-entry':' no-entry') + (entries[iso] && entries[iso].note ? ' has-note':'');
-    el.innerHTML = '<span>'+day+'</span><span class="dot"></span>';
-    if(entries[iso]){
-      el.title = entries[iso].weight.toFixed(2)+' kg'+(entries[iso].note ? ' — '+entries[iso].note : '');
-    }
+    el.innerHTML = '<span>'+day+'</span><span class="cal-day-info"><span class="dot"></span>'+(entries[iso] ? '<span class="cal-weight">'+entries[iso].weight.toFixed(1)+'</span>' : '')+'</span>';
     if(!isFuture){
       el.addEventListener('click', ()=>openDayModal(iso));
     }
