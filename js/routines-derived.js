@@ -28,14 +28,6 @@ export function formatSessionSets(sets){
     .join(', ');
 }
 
-// versión compacta para espacios chicos (ej. celda de calendario) -> "85×6\n80×8-7-6"
-// (una línea por peso distinto, para que no se corte un número al hacer word-wrap)
-export function formatSessionSetsCompact(sets){
-  return groupSetsByWeight(sets)
-    .map(g => (g.weight != null ? Number(g.weight) : '—') + '×' + g.reps.join('-'))
-    .join('\n');
-}
-
 // logs: [{ session_date, set_number, weight, reps }] (todo el historial de un ejercicio, cualquier orden)
 // -> { date, sets } de la sesión más reciente, o null si no hay registros
 export function computeLatestSession(logs){

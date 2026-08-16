@@ -307,33 +307,13 @@ body{
 .cal-legend .k{ display:flex; align-items:center; gap:5px; }
 .cal-legend .dot{ width:6px;height:6px;border-radius:50%; }
 
-/* calendario por ejercicio: cada día muestra series/peso/reps, no solo un puntito */
-#exercise-cal-grid.cal-grid{ gap:5px; }
-#exercise-cal-grid .cal-day{
-  aspect-ratio:auto;
-  min-height:58px;
-  border-radius:8px;
-  justify-content:flex-start;
-  padding:5px 2px 4px;
-  gap:2px;
+/* calendario por ejercicio: debajo de la grilla, detalle de los registros del mes visible */
+.exercise-cal-month-list{
+  margin-top:16px; padding-top:14px; border-top:1px solid var(--line);
+  max-height:220px; overflow-y:auto;
 }
-#exercise-cal-grid .cal-day .ex-cal-day-num{ font-size:0.72rem; }
-#exercise-cal-grid .cal-day.today .ex-cal-day-num{ color:var(--brass); }
-#exercise-cal-grid .cal-day .ex-cal-day-summary{
-  font-family:'Inter', sans-serif;
-  font-size:0.5rem;
-  font-weight:500;
-  line-height:1.25;
-  color:var(--ink-soft);
-  text-align:center;
-  white-space:pre-line;
-  overflow:hidden;
-  display:-webkit-box;
-  -webkit-line-clamp:4;
-  -webkit-box-orient:vertical;
-}
-#exercise-cal-grid .cal-day.has-entry{ background:var(--paper-deep); }
-#exercise-cal-grid .cal-day.has-entry .ex-cal-day-summary{ color:var(--ink); font-weight:600; }
+.exercise-cal-month-list .empty-state{ padding:10px 0; }
+.exercise-cal-month-item .act-date{ color:var(--accent); font-weight:700; }
 
 /* chart panel */
 .tabs{ display:flex; gap:6px; background:var(--paper-deep); padding:3px; border-radius:999px; }

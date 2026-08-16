@@ -17,7 +17,7 @@ import {
 import { renderRoutines } from './routines-render.js';
 import { renderGym } from './gym-render.js';
 import { renderHome } from './home-render.js';
-import { groupLogsBySession, formatSessionSets, formatSessionSetsCompact, buildExercisesByDay } from './routines-derived.js';
+import { groupLogsBySession, formatSessionSets, buildExercisesByDay } from './routines-derived.js';
 import { wireDragReorder, isJiggling, exitJiggleMode } from './routines-dnd.js';
 import { showToast, escapeHtml, todayISO, fromISO, toISO, fmtShort, MONTHS, DOW } from './utils.js';
 
@@ -373,14 +373,32 @@ export function renderExerciseCalendar(){
     const hasLog = !!sets;
     const el = document.createElement('div');
     el.className = 'cal-day' + (isFuture ? ' future' : '') + (iso === today ? ' today' : '') + (hasLog ? ' has-entry' : ' no-entry');
-    el.innerHTML = '<span class="ex-cal-day-num">'+day+'</span>'
-      + (hasLog ? '<span class="ex-cal-day-summary">'+escapeHtml(formatSessionSetsCompact(sets))+'</span>' : '');
+    el.innerHTML = '<span>'+day+'</span><span class="dot"></span>';
     if(!isFuture){
       el.addEventListener('click', () => pickExerciseCalendarDay(iso));
     }
     grid.appendChild(el);
   }
   document.getElementById('exercise-cal-next').disabled = (exerciseCalendarMonth.getFullYear()===new Date().getFullYear() && exerciseCalendarMonth.getMonth()===new Date().getMonth());
+  renderExerciseCalendarMonthList();
+}
+
+function renderExerciseCalendarMonthList(){
+  const listEl = document.getElementById('exercise-cal-month-list');
+  if(!listEl) return;
+  const year = exerciseCalendarMonth.getFullYear();
+  const month = exerciseCalendarMonth.getMonth();
+  const monthEntries = Array.from(exerciseCalendarSessions.entries())
+    .filter(([iso]) => { const d = fromISO(iso); return d.getFullYear() === year && d.getMonth() === month; })
+    .sort(([a], [b]) => b.localeCompare(a));
+  if(monthEntries.length === 0){
+    listEl.innerHTML = '<div class="empty-state">Sin registros este mes.</div>';
+    return;
+  }
+  listEl.innerHTML = monthEntries.map(([iso, sets]) => `<div class="activity-item exercise-cal-month-item">
+    <span class="act-date">${escapeHtml(fmtShort(fromISO(iso)))}</span>
+    <span class="act-detail">${escapeHtml(formatSessionSets(sets))}</span>
+  </div>`).join('');
 }
 async function pickExerciseCalendarDay(iso){
   const exerciseId = exerciseCalendarExerciseId;
