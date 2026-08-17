@@ -7,7 +7,8 @@ export const MUSCLE_GROUP_LABELS = { Pierna:'Pierna', Pecho:'Pecho', Hombro:'Hom
 export let routineDays = {};
 export function setRoutineDays(v){ routineDays = v; }
 
-// catálogo de ejercicios: { [id]: { id, name, sets_target, reps_target, muscle_group, days: [{day_of_week, order_index}] } }
+// catálogo de ejercicios: { [id]: { id, name, muscle_group, days: [{day_of_week, order_index, variant, sets_target, reps_target}] } }
+// sets_target/reps_target son del día (no del ejercicio) — el mismo ejercicio puede pedir distintas series/reps en cada día
 export let exercisesById = {};
 export function setExercisesById(v){ exercisesById = v; }
 
@@ -34,6 +35,15 @@ export function setAssigningTarget(v){ assigningTarget = v; }
 // ejercicio abierto en el modal de sesión
 export let sessionExercise = null;
 export function setSessionExercise(v){ sessionExercise = v; }
+
+// día (1-7) del que se abrió el modal de sesión actual, si se conoce (null si es ambiguo,
+// ej. un ejercicio asignado a varios días abierto desde el historial de Gimnasio sin contexto de día)
+export let sessionDayOfWeek = null;
+export function setSessionDayOfWeek(v){ sessionDayOfWeek = v; }
+
+// { exerciseId, dayOfWeek } en edición en el modal de objetivo (series/reps) de un día puntual
+export let editingDayTarget = null;
+export function setEditingDayTarget(v){ editingDayTarget = v; }
 
 // fecha (ISO) que se está viendo/editando en el modal de sesión
 export let sessionEditDate = null;

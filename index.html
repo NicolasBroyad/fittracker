@@ -317,7 +317,7 @@
       <label for="exercise-input-name">Ejercicio</label>
       <input type="text" id="exercise-input-name" autocomplete="off" placeholder="Press banca">
     </div>
-    <div class="field-row">
+    <div class="field-row hidden" id="exercise-modal-target-row">
       <div class="field">
         <label for="exercise-input-sets">Series</label>
         <input type="text" id="exercise-input-sets" inputmode="numeric" autocomplete="off" placeholder="4">
@@ -355,6 +355,27 @@
       <button class="btn btn-delete hidden" id="exercise-modal-delete">Borrar</button>
       <button class="btn btn-cancel" id="exercise-modal-cancel">Cancelar</button>
       <button class="btn btn-save" id="exercise-modal-save">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay hidden" id="day-target-modal-overlay">
+  <div class="modal">
+    <h3>Objetivo del día</h3>
+    <div class="modal-date" id="day-target-modal-label"></div>
+    <div class="field-row">
+      <div class="field">
+        <label for="day-target-input-sets">Series</label>
+        <input type="text" id="day-target-input-sets" inputmode="numeric" autocomplete="off" placeholder="4">
+      </div>
+      <div class="field">
+        <label for="day-target-input-reps">Repeticiones</label>
+        <input type="text" id="day-target-input-reps" autocomplete="off" placeholder="6-8">
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-cancel" id="day-target-modal-cancel">Cancelar</button>
+      <button class="btn btn-save" id="day-target-modal-save">Guardar</button>
     </div>
   </div>
 </div>

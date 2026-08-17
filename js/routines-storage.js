@@ -12,19 +12,23 @@ export async function saveRoutineDay(dayOfWeek, name, isRest){
   return sb.from('routine_days').upsert({ day_of_week: dayOfWeek, name, is_rest: isRest }, { onConflict: 'user_id,day_of_week' });
 }
 
-// catálogo de ejercicios + a qué días de la semana está asignado cada uno (con su slot/variant en ese día).
-// -> { [id]: { id, name, sets_target, reps_target, muscle_group, days: [{day_of_week, order_index, variant}] } }
+// catálogo de ejercicios + a qué días de la semana está asignado cada uno (con su slot/variant y su
+// propio objetivo de series/reps para ESE día en particular — dos días pueden pedir distinto).
+// -> { [id]: { id, name, muscle_group, days: [{day_of_week, order_index, variant, sets_target, reps_target}] } }
 export async function loadExercisesWithDays(){
   const [{ data: exs, error: e1 }, { data: assigns, error: e2 }] = await Promise.all([
-    sb.from('routine_exercises').select('id,name,sets_target,reps_target,muscle_group'),
-    sb.from('routine_exercise_days').select('exercise_id,day_of_week,order_index,variant'),
+    sb.from('routine_exercises').select('id,name,muscle_group'),
+    sb.from('routine_exercise_days').select('exercise_id,day_of_week,order_index,variant,sets_target,reps_target'),
   ]);
   if(e1){ console.error(e1); return {}; }
   if(e2){ console.error(e2); return {}; }
   const daysByExercise = {};
   (assigns || []).forEach(a => {
     if(!daysByExercise[a.exercise_id]) daysByExercise[a.exercise_id] = [];
-    daysByExercise[a.exercise_id].push({ day_of_week: a.day_of_week, order_index: a.order_index, variant: a.variant });
+    daysByExercise[a.exercise_id].push({
+      day_of_week: a.day_of_week, order_index: a.order_index, variant: a.variant,
+      sets_target: a.sets_target, reps_target: a.reps_target,
+    });
   });
   const result = {};
   (exs || []).forEach(ex => {
@@ -34,28 +38,34 @@ export async function loadExercisesWithDays(){
   return result;
 }
 
-export async function createExercise(name, setsTarget, repsTarget, muscleGroup){
-  return sb.from('routine_exercises').insert({
-    name, sets_target: setsTarget, reps_target: repsTarget, muscle_group: muscleGroup,
-  }).select('id,name,sets_target,reps_target,muscle_group').single();
+export async function createExercise(name, muscleGroup){
+  return sb.from('routine_exercises').insert({ name, muscle_group: muscleGroup }).select('id,name,muscle_group').single();
 }
 
-export async function updateExercise(id, name, setsTarget, repsTarget, muscleGroup){
-  return sb.from('routine_exercises').update({
-    name, sets_target: setsTarget, reps_target: repsTarget, muscle_group: muscleGroup,
-  }).eq('id', id);
+export async function updateExercise(id, name, muscleGroup){
+  return sb.from('routine_exercises').update({ name, muscle_group: muscleGroup }).eq('id', id);
 }
 
 export async function deleteExercise(id){
   return sb.from('routine_exercises').delete().eq('id', id);
 }
 
-export async function assignExerciseToDay(exerciseId, dayOfWeek, orderIndex, variant){
-  return sb.from('routine_exercise_days').insert({ exercise_id: exerciseId, day_of_week: dayOfWeek, order_index: orderIndex, variant: variant || 0 });
+export async function assignExerciseToDay(exerciseId, dayOfWeek, orderIndex, variant, setsTarget, repsTarget){
+  return sb.from('routine_exercise_days').insert({
+    exercise_id: exerciseId, day_of_week: dayOfWeek, order_index: orderIndex, variant: variant || 0,
+    sets_target: setsTarget != null ? setsTarget : null, reps_target: repsTarget || null,
+  });
 }
 
 export async function unassignExerciseFromDay(exerciseId, dayOfWeek){
   return sb.from('routine_exercise_days').delete().eq('exercise_id', exerciseId).eq('day_of_week', dayOfWeek);
+}
+
+// edita el objetivo de series/reps de un ejercicio ya asignado a un día puntual, sin tocar otros días
+export async function updateExerciseDayTarget(exerciseId, dayOfWeek, setsTarget, repsTarget){
+  return sb.from('routine_exercise_days')
+    .update({ sets_target: setsTarget, reps_target: repsTarget })
+    .eq('exercise_id', exerciseId).eq('day_of_week', dayOfWeek);
 }
 
 export async function updateExerciseDayOrderIndex(exerciseId, dayOfWeek, orderIndex){

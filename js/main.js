@@ -14,6 +14,7 @@ import {
   closeExerciseModal, saveExerciseModal, deleteExerciseModal,
   closeSessionModal, saveSession, openSessionModal,
   closeAssignModal, renderAssignList, createFromAssignModal,
+  closeDayTargetModal, saveDayTargetModal,
 } from './routines.js';
 
 initTheme();
@@ -87,6 +88,9 @@ document.getElementById('exercise-modal-cancel').addEventListener('click', close
 document.getElementById('exercise-modal-save').addEventListener('click', saveExerciseModal);
 document.getElementById('exercise-modal-delete').addEventListener('click', deleteExerciseModal);
 document.getElementById('exercise-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='exercise-modal-overlay') closeExerciseModal(); });
+document.getElementById('day-target-modal-cancel').addEventListener('click', closeDayTargetModal);
+document.getElementById('day-target-modal-save').addEventListener('click', saveDayTargetModal);
+document.getElementById('day-target-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='day-target-modal-overlay') closeDayTargetModal(); });
 document.getElementById('session-modal-close').addEventListener('click', closeSessionModal);
 document.getElementById('session-modal-save').addEventListener('click', saveSession);
 document.getElementById('session-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='session-modal-overlay') closeSessionModal(); });

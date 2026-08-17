@@ -3,6 +3,8 @@ import {
   editingDay, setEditingDay,
   editingExercise, setEditingExercise, assigningTarget, setAssigningTarget,
   sessionExercise, setSessionExercise,
+  sessionDayOfWeek, setSessionDayOfWeek,
+  editingDayTarget, setEditingDayTarget,
   sessionEditDate, setSessionEditDate, sessionSetRows, setSessionSetRows,
   exerciseCalendarExerciseId, setExerciseCalendarExerciseId,
   exerciseCalendarMonth, setExerciseCalendarMonth,
@@ -11,7 +13,7 @@ import {
 import {
   loadRoutineDays, loadExercisesWithDays, saveRoutineDay,
   createExercise, updateExercise, deleteExercise,
-  assignExerciseToDay, unassignExerciseFromDay,
+  assignExerciseToDay, unassignExerciseFromDay, updateExerciseDayTarget,
   loadExerciseLogs, replaceSessionSets, deleteSessionLogs,
 } from './routines-storage.js';
 import { renderRoutines } from './routines-render.js';
@@ -20,6 +22,10 @@ import { renderHome } from './home-render.js';
 import { groupLogsBySession, formatSessionSets, buildExercisesByDay } from './routines-derived.js';
 import { wireDragReorder, isJiggling, exitJiggleMode } from './routines-dnd.js';
 import { showToast, escapeHtml, todayISO, fromISO, toISO, fmtShort, MONTHS, DOW } from './utils.js';
+
+// día de la semana del que se abrió el calendario de un ejercicio (si se conoce), para poder
+// preservar el contexto de día al pasar del calendario al modal de sesión de un día puntual
+let calendarDayOfWeek = null;
 
 export async function loadRoutines(){
   const [days, exercises] = await Promise.all([loadRoutineDays(), loadExercisesWithDays()]);
@@ -124,12 +130,17 @@ export function renderAssignList(query){
     list.innerHTML = `<div class="empty-state">${msg}</div>`;
     return;
   }
-  list.innerHTML = options.map(ex => `<div class="assign-exercise-item">
+  list.innerHTML = options.map(ex => `<div class="assign-exercise-item" data-id="${ex.id}">
     <div class="assign-exercise-info">
       <span class="assign-exercise-name">${escapeHtml(ex.name)}</span>
       ${ex.muscle_group ? `<span class="assign-exercise-muscle">${escapeHtml(ex.muscle_group)}</span>` : ''}
     </div>
-    <button class="assign-exercise-add" data-id="${ex.id}">+ Agregar</button>
+    <div class="assign-exercise-target-row">
+      <input type="text" inputmode="numeric" class="assign-target-sets" placeholder="series">
+      <span class="assign-target-x">×</span>
+      <input type="text" class="assign-target-reps" placeholder="reps">
+      <button class="assign-exercise-add" data-id="${ex.id}">+ Agregar</button>
+    </div>
   </div>`).join('');
 }
 export async function assignExistingExercise(exerciseId){
@@ -137,7 +148,12 @@ export async function assignExistingExercise(exerciseId){
   const { dayOfWeek, orderIndex } = assigningTarget;
   const finalOrderIndex = orderIndex != null ? orderIndex : nextOrderIndexForDay(dayOfWeek);
   const variant = orderIndex != null ? nextVariantForSlot(dayOfWeek, orderIndex) : 0;
-  const { error } = await assignExerciseToDay(exerciseId, dayOfWeek, finalOrderIndex, variant);
+  const item = document.querySelector(`.assign-exercise-item[data-id="${exerciseId}"]`);
+  const setsRaw = item ? item.querySelector('.assign-target-sets').value.trim() : '';
+  const setsTarget = setsRaw === '' ? null : parseInt(setsRaw, 10);
+  if(setsRaw !== '' && (isNaN(setsTarget) || setsTarget <= 0)){ showToast('Series inválidas'); return; }
+  const repsTarget = item ? (item.querySelector('.assign-target-reps').value.trim() || null) : null;
+  const { error } = await assignExerciseToDay(exerciseId, dayOfWeek, finalOrderIndex, variant, setsTarget, repsTarget);
   if(error){ console.error(error); showToast('No se pudo agregar'); return; }
   closeAssignModal();
   await reloadExercisesAndRefresh();
@@ -160,9 +176,12 @@ export function openExerciseModal(exercise, presetDay, presetOrderIndex){
   });
   document.getElementById('exercise-modal-title').textContent = exercise ? 'Editar ejercicio' : 'Nuevo ejercicio';
   document.getElementById('exercise-input-name').value = exercise ? exercise.name : '';
-  document.getElementById('exercise-input-sets').value = exercise && exercise.sets_target != null ? exercise.sets_target : '';
-  document.getElementById('exercise-input-reps').value = exercise && exercise.reps_target ? exercise.reps_target : '';
   document.getElementById('exercise-input-muscle').value = exercise && exercise.muscle_group ? exercise.muscle_group : '';
+  // series/reps ya no son del ejercicio en sí, sino del día al que se asigna — solo se piden acá
+  // cuando este modal se abrió para crear un ejercicio nuevo directo desde un día puntual
+  document.getElementById('exercise-modal-target-row').classList.toggle('hidden', presetDay == null);
+  document.getElementById('exercise-input-sets').value = '';
+  document.getElementById('exercise-input-reps').value = '';
   const checkedDays = new Set(exercise ? exercise.days.map(d => d.day_of_week) : []);
   if(presetDay != null) checkedDays.add(presetDay);
   document.querySelectorAll('.exercise-day-checkbox').forEach(cb => { cb.checked = checkedDays.has(Number(cb.value)); });
@@ -177,16 +196,21 @@ export function closeExerciseModal(){
 export async function saveExerciseModal(){
   const name = document.getElementById('exercise-input-name').value.trim();
   if(name === ''){ showToast('Ingresá un nombre para el ejercicio'); return; }
-  const setsRaw = document.getElementById('exercise-input-sets').value.trim();
-  const setsTarget = setsRaw === '' ? null : parseInt(setsRaw, 10);
-  if(setsRaw !== '' && (isNaN(setsTarget) || setsTarget <= 0)){ showToast('Series inválidas'); return; }
-  const repsTarget = document.getElementById('exercise-input-reps').value.trim() || null;
   const muscleGroup = document.getElementById('exercise-input-muscle').value || null;
   const selectedDays = Array.from(document.querySelectorAll('.exercise-day-checkbox:checked')).map(cb => Number(cb.value));
 
   const { exercise, presetDay, presetOrderIndex } = editingExercise;
+  // solo se piden series/reps cuando se está creando el ejercicio directo desde un día (ver openExerciseModal)
+  let setsTarget = null, repsTarget = null;
+  if(!exercise && presetDay != null){
+    const setsRaw = document.getElementById('exercise-input-sets').value.trim();
+    setsTarget = setsRaw === '' ? null : parseInt(setsRaw, 10);
+    if(setsRaw !== '' && (isNaN(setsTarget) || setsTarget <= 0)){ showToast('Series inválidas'); return; }
+    repsTarget = document.getElementById('exercise-input-reps').value.trim() || null;
+  }
+
   if(exercise){
-    const { error } = await updateExercise(exercise.id, name, setsTarget, repsTarget, muscleGroup);
+    const { error } = await updateExercise(exercise.id, name, muscleGroup);
     if(error){ console.error(error); showToast('No se pudo guardar'); return; }
     const currentDays = exercise.days.map(d => d.day_of_week);
     const toAdd = selectedDays.filter(d => !currentDays.includes(d));
@@ -198,12 +222,15 @@ export async function saveExerciseModal(){
     const assignError = results.find(r => r && r.error);
     if(assignError){ console.error(assignError.error); showToast('No se pudo guardar'); return; }
   } else {
-    const { data, error } = await createExercise(name, setsTarget, repsTarget, muscleGroup);
+    const { data, error } = await createExercise(name, muscleGroup);
     if(error){ console.error(error); showToast('No se pudo crear el ejercicio'); return; }
     // si se creó como alternativa de un slot puntual, esa asignación va a ese slot en vez de a uno nuevo
     await Promise.all(selectedDays.map(d => {
       if(d === presetDay && presetOrderIndex != null){
-        return assignExerciseToDay(data.id, d, presetOrderIndex, nextVariantForSlot(d, presetOrderIndex));
+        return assignExerciseToDay(data.id, d, presetOrderIndex, nextVariantForSlot(d, presetOrderIndex), setsTarget, repsTarget);
+      }
+      if(d === presetDay){
+        return assignExerciseToDay(data.id, d, nextOrderIndexForDay(d), 0, setsTarget, repsTarget);
       }
       return assignExerciseToDay(data.id, d, nextOrderIndexForDay(d));
     }));
@@ -226,6 +253,37 @@ async function unassignFromDay(exerciseId, dayOfWeek){
   if(error){ console.error(error); showToast('No se pudo quitar'); return; }
   await reloadExercisesAndRefresh();
   showToast('Quitado del día');
+}
+
+// ---------- Modal: objetivo (series/reps) de un ejercicio ya asignado a un día puntual ----------
+
+export function openDayTargetModal(exerciseId, dayOfWeek){
+  const exercise = exercisesById[exerciseId];
+  if(!exercise) return;
+  const dayItem = (exercise.days || []).find(d => d.day_of_week === dayOfWeek);
+  setEditingDayTarget({ exerciseId, dayOfWeek });
+  document.getElementById('day-target-modal-label').textContent = exercise.name + ' · ' + DAY_NAMES[dayOfWeek-1];
+  document.getElementById('day-target-input-sets').value = dayItem && dayItem.sets_target != null ? dayItem.sets_target : '';
+  document.getElementById('day-target-input-reps').value = dayItem && dayItem.reps_target ? dayItem.reps_target : '';
+  document.getElementById('day-target-modal-overlay').classList.remove('hidden');
+  setTimeout(()=>document.getElementById('day-target-input-sets').focus(), 50);
+}
+export function closeDayTargetModal(){
+  document.getElementById('day-target-modal-overlay').classList.add('hidden');
+  setEditingDayTarget(null);
+}
+export async function saveDayTargetModal(){
+  if(!editingDayTarget) return;
+  const setsRaw = document.getElementById('day-target-input-sets').value.trim();
+  const setsTarget = setsRaw === '' ? null : parseInt(setsRaw, 10);
+  if(setsRaw !== '' && (isNaN(setsTarget) || setsTarget <= 0)){ showToast('Series inválidas'); return; }
+  const repsTarget = document.getElementById('day-target-input-reps').value.trim() || null;
+  const { exerciseId, dayOfWeek } = editingDayTarget;
+  const { error } = await updateExerciseDayTarget(exerciseId, dayOfWeek, setsTarget, repsTarget);
+  if(error){ console.error(error); showToast('No se pudo guardar'); return; }
+  closeDayTargetModal();
+  await reloadExercisesAndRefresh();
+  showToast('Guardado');
 }
 
 // ---------- Modal: registrar/editar sesión ----------
@@ -252,13 +310,21 @@ function setSessionDate(dateIso, sessions){
   renderSessionSetRows();
 }
 
-export async function openSessionModal(exerciseId, dateOverride){
+export async function openSessionModal(exerciseId, dateOverride, dayOfWeek){
   const exercise = exercisesById[exerciseId];
   if(!exercise) return;
   setSessionExercise(exercise);
-  const target = (exercise.sets_target != null ? exercise.sets_target : '—')+'x'+(exercise.reps_target || '—');
+  // el objetivo de series/reps es del día, no del ejercicio: si no vino el día por contexto (ej. se
+  // abrió desde el historial de Gimnasio) y el ejercicio solo está asignado a un día, se infiere ese;
+  // si está en varios días es ambiguo y no se muestra objetivo ni se permite editarlo desde acá
+  const resolvedDay = dayOfWeek != null ? dayOfWeek : (exercise.days.length === 1 ? exercise.days[0].day_of_week : null);
+  setSessionDayOfWeek(resolvedDay);
+  const dayItem = resolvedDay != null ? exercise.days.find(d => d.day_of_week === resolvedDay) : null;
+  const target = dayItem ? (dayItem.sets_target != null ? dayItem.sets_target : '—')+'x'+(dayItem.reps_target || '—') : '';
   document.getElementById('session-modal-title').textContent = exercise.name;
   document.getElementById('session-modal-target').textContent = target;
+  document.getElementById('session-modal-target').classList.toggle('hidden', !dayItem);
+  document.getElementById('session-modal-edit-exercise').classList.toggle('hidden', resolvedDay == null);
   document.getElementById('session-modal-overlay').classList.remove('hidden');
 
   document.getElementById('session-history').innerHTML = '<div class="empty-state">Cargando...</div>';
@@ -270,6 +336,7 @@ export async function openSessionModal(exerciseId, dateOverride){
 export function closeSessionModal(){
   document.getElementById('session-modal-overlay').classList.add('hidden');
   setSessionExercise(null);
+  setSessionDayOfWeek(null);
   setSessionSetRows([]);
 }
 
@@ -317,15 +384,16 @@ export async function deleteSessionHistoryEntry(exerciseId, date){
   const { error } = await deleteSessionLogs(exerciseId, date);
   if(error){ console.error(error); showToast('No se pudo borrar'); return; }
   showToast('Sesión eliminada');
-  await openSessionModal(exerciseId, date === sessionEditDate ? todayISO() : sessionEditDate);
+  await openSessionModal(exerciseId, date === sessionEditDate ? todayISO() : sessionEditDate, sessionDayOfWeek);
   await refreshRoutineViews();
 }
 
 // ---------- Calendario por ejercicio ----------
 
-export async function openExerciseCalendar(exerciseId){
+export async function openExerciseCalendar(exerciseId, dayOfWeek){
   const exercise = exercisesById[exerciseId];
   if(!exercise) return;
+  calendarDayOfWeek = dayOfWeek != null ? dayOfWeek : null;
   setExerciseCalendarExerciseId(exerciseId);
   document.getElementById('exercise-cal-title').textContent = exercise.name;
   const logs = await loadExerciseLogs(exerciseId);
@@ -402,8 +470,9 @@ function renderExerciseCalendarMonthList(){
 }
 async function pickExerciseCalendarDay(iso){
   const exerciseId = exerciseCalendarExerciseId;
+  const dayOfWeek = calendarDayOfWeek;
   closeExerciseCalendar();
-  await openSessionModal(exerciseId, iso);
+  await openSessionModal(exerciseId, iso, dayOfWeek);
 }
 
 // ---------- Delegación de clicks sobre el contenido dinámico ----------
@@ -419,8 +488,10 @@ export function wireRoutinesDelegation(){
       return;
     }
     if(isJiggling()) return; // mientras se reordena un día, el resto de la lista queda bloqueada
+    const targetBtn = e.target.closest('.ex-target-btn');
+    if(targetBtn){ e.stopPropagation(); openDayTargetModal(targetBtn.dataset.id, Number(targetBtn.dataset.day)); return; }
     const calBtn = e.target.closest('.ex-calendar-btn');
-    if(calBtn){ e.stopPropagation(); openExerciseCalendar(calBtn.dataset.id); return; }
+    if(calBtn){ e.stopPropagation(); openExerciseCalendar(calBtn.dataset.id, Number(calBtn.dataset.day)); return; }
     const removeBtn = e.target.closest('.ex-remove-btn');
     if(removeBtn){ e.stopPropagation(); unassignFromDay(removeBtn.dataset.id, Number(removeBtn.dataset.day)); return; }
     const addAlt = e.target.closest('.btn-add-alt');
@@ -428,7 +499,11 @@ export function wireRoutinesDelegation(){
     const editBtn = e.target.closest('.routine-day-edit');
     if(editBtn){ openDayNameModal(Number(editBtn.dataset.day)); return; }
     const row = e.target.closest('.exercise-row');
-    if(row){ openSessionModal(row.dataset.id); return; }
+    if(row){
+      const panel = row.closest('.routine-day-panel');
+      openSessionModal(row.dataset.id, undefined, panel ? Number(panel.dataset.day) : null);
+      return;
+    }
   });
   wireDragReorder();
 
@@ -445,11 +520,10 @@ export function wireRoutinesDelegation(){
   });
 
   document.getElementById('session-modal-edit-exercise').addEventListener('click', ()=>{
-    if(!sessionExercise) return;
-    const exercise = exercisesById[sessionExercise.id];
-    if(!exercise) return;
+    if(!sessionExercise || sessionDayOfWeek == null) return;
+    const exerciseId = sessionExercise.id, dayOfWeek = sessionDayOfWeek;
     closeSessionModal();
-    openExerciseModal(exercise, null);
+    openDayTargetModal(exerciseId, dayOfWeek);
   });
 
   document.getElementById('session-add-set').addEventListener('click', addSessionSetRow);

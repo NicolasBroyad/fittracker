@@ -36,8 +36,8 @@ function exerciseRowHtml(ex, label, logsByExercise, dayOfWeek){
     <div class="ex-main">
       <span class="ex-number">${label}</span>
       <span class="ex-name">${escapeHtml(ex.name)}</span>
-      <span class="ex-target">${escapeHtml(target)}</span>
-      <button class="ex-calendar-btn" data-id="${ex.id}" title="Ver calendario">${CALENDAR_SVG}</button>
+      <button class="ex-target ex-target-btn" data-id="${ex.id}" data-day="${dayOfWeek}" title="Editar objetivo de este día">${escapeHtml(target)}</button>
+      <button class="ex-calendar-btn" data-id="${ex.id}" data-day="${dayOfWeek}" title="Ver calendario">${CALENDAR_SVG}</button>
       <button class="ex-remove-btn" data-id="${ex.id}" data-day="${dayOfWeek}" title="Quitar de este día">${REMOVE_SVG}</button>
     </div>
     <div class="ex-stats">
@@ -106,7 +106,6 @@ function daysBadgeHtml(days){
 }
 
 function catalogRowHtml(ex, logsByExercise){
-  const target = (ex.sets_target != null ? ex.sets_target : '—')+'x'+(ex.reps_target || '—');
   const logs = logsByExercise[ex.id] || [];
   const latest = computeLatestSession(logs);
   const best = computeBestSession(logs);
@@ -114,7 +113,6 @@ function catalogRowHtml(ex, logsByExercise){
     <div class="ex-main">
       <span class="ex-name">${escapeHtml(ex.name)}</span>
       ${ex.muscle_group ? `<span class="ex-muscle-badge">${escapeHtml(MUSCLE_GROUP_LABELS[ex.muscle_group] || ex.muscle_group)}</span>` : ''}
-      <span class="ex-target">${escapeHtml(target)}</span>
     </div>
     <div class="ex-catalog-days-row">${daysBadgeHtml(ex.days)}</div>
     <div class="ex-stats">

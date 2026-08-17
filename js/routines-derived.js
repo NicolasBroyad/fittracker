@@ -82,6 +82,8 @@ function dayOfWeekOf(date){ return ((date.getDay()+6)%7) + 1; } // 1=lunes..7=do
 
 // agrupa el catálogo de ejercicios (routines-state.exercisesById) por día de la semana,
 // según las asignaciones de cada uno; cada día queda ordenado por su order_index propio.
+// sets_target/reps_target son del día (routine_exercise_days), no del ejercicio: el mismo
+// ejercicio puede pedir distintas series/reps en cada día donde está asignado.
 // -> { dayOfWeek: [{ id, name, sets_target, reps_target, muscle_group, order_index, variant }] }
 export function buildExercisesByDay(exercisesById){
   const result = {};
@@ -89,7 +91,7 @@ export function buildExercisesByDay(exercisesById){
     (ex.days || []).forEach(d => {
       if(!result[d.day_of_week]) result[d.day_of_week] = [];
       result[d.day_of_week].push({
-        id: ex.id, name: ex.name, sets_target: ex.sets_target, reps_target: ex.reps_target,
+        id: ex.id, name: ex.name, sets_target: d.sets_target, reps_target: d.reps_target,
         muscle_group: ex.muscle_group, order_index: d.order_index, variant: d.variant || 0,
       });
     });
