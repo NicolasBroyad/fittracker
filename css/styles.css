@@ -795,6 +795,7 @@ body{
 /* field-row (dos campos lado a lado en un modal) */
 .field-row{ display:flex; gap:12px; }
 .field-row .field{ flex:1; min-width:0; }
+.field-row .field label{ white-space:nowrap; }
 .field input[type="date"]{ min-width:0; }
 
 .field-checkbox{
