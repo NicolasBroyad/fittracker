@@ -26,3 +26,9 @@ export function setCurrentGoal(v){ currentGoal = v; }
 // fases (períodos): [{ id, phase, start_date, end_date }], end_date null = en curso. Orden: start_date desc
 export let phases = [];
 export function setPhases(v){ phases = v; }
+
+// toggles del gráfico de Evolución: mostrar bandas de fase / línea de meta de peso
+export let showPhases = true;
+export function setShowPhases(v){ showPhases = v; }
+export let showGoalLine = true;
+export function setShowGoalLine(v){ showGoalLine = v; }

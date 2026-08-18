@@ -1,4 +1,7 @@
-import { chartModalOpen, setChartModalOpen, setActiveTabState, setChartRangeState } from './state.js';
+import {
+  chartModalOpen, setChartModalOpen, setActiveTabState, setChartRangeState,
+  showPhases, setShowPhases, showGoalLine, setShowGoalLine,
+} from './state.js';
 import { renderChart } from './chart.js';
 
 const BIG_OPTS = { rowH: 460, spacing: 30 };
@@ -21,6 +24,26 @@ export function setChartRange(range){
   setChartRangeState(range);
   document.getElementById('chart-range').value = range;
   document.getElementById('chart-range-big').value = range;
+  renderChart('chart-container', 'chart-legend');
+  if(chartModalOpen){
+    renderChart('chart-container-big', 'chart-legend-big', BIG_OPTS);
+  }
+}
+
+export function toggleShowPhases(){
+  setShowPhases(!showPhases);
+  document.getElementById('chart-toggle-phases').classList.toggle('active', showPhases);
+  document.getElementById('chart-toggle-phases-big').classList.toggle('active', showPhases);
+  renderChart('chart-container', 'chart-legend');
+  if(chartModalOpen){
+    renderChart('chart-container-big', 'chart-legend-big', BIG_OPTS);
+  }
+}
+
+export function toggleShowGoalLine(){
+  setShowGoalLine(!showGoalLine);
+  document.getElementById('chart-toggle-goal').classList.toggle('active', showGoalLine);
+  document.getElementById('chart-toggle-goal-big').classList.toggle('active', showGoalLine);
   renderChart('chart-container', 'chart-legend');
   if(chartModalOpen){
     renderChart('chart-container-big', 'chart-legend-big', BIG_OPTS);

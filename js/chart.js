@@ -1,4 +1,4 @@
-import { activeTab, chartRange, phases, currentGoal } from './state.js';
+import { activeTab, chartRange, phases, currentGoal, showPhases, showGoalLine } from './state.js';
 import { fromISO, fmtShort, rangeCutoffISO, todayISO, PHASE_LABELS } from './utils.js';
 import { weeklyAverages, dailyWithMovingAvg, linreg } from './derived.js';
 
@@ -22,7 +22,7 @@ const PHASE_COLORS = { volumen: 'var(--accent)', definicion: 'var(--loss)', mant
 // agrupa puntos consecutivos (por índice) que caen dentro de la misma fase, para poder
 // dibujar un solo rectángulo de fondo por tramo en vez de uno por punto
 function phaseSegments(points){
-  if(phases.length === 0) return [];
+  if(!showPhases || phases.length === 0) return [];
   const today = todayISO();
   const segs = [];
   let cur = null;
@@ -108,7 +108,7 @@ export function renderChart(containerId, legendId, opts){
   const padL=42, padR=16, padT=18, padB=34;
   const rowH = opts.rowH || 260;
 
-  const targetWeight = currentGoal && currentGoal.target_weight != null ? Number(currentGoal.target_weight) : null;
+  const targetWeight = showGoalLine && currentGoal && currentGoal.target_weight != null ? Number(currentGoal.target_weight) : null;
 
   if(activeTab === 'weekly'){
     const weeks = weeklyAverages(rangeCutoffISO(chartRange));

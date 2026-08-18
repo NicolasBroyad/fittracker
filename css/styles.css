@@ -331,6 +331,12 @@ body{
   flex:0 0 auto;
 }
 .btn-expand:hover{ background:var(--accent-soft); color:var(--ink); }
+.chart-toggle-row{ display:flex; gap:8px; margin-bottom:12px; }
+.chart-toggle-btn{
+  border:1px solid var(--line-strong); background:transparent; border-radius:999px; padding:5px 12px;
+  font-size:0.72rem; font-weight:600; color:var(--ink-faint); cursor:pointer; font-family:'Inter',sans-serif;
+}
+.chart-toggle-btn.active{ background:var(--accent-soft); color:var(--accent); border-color:var(--accent); }
 .chart-range-row{ margin-bottom:12px; }
 .chart-range-row.hidden{ display:none; }
 .chart-range-select{
