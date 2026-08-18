@@ -27,8 +27,8 @@ export function setCurrentGoal(v){ currentGoal = v; }
 export let phases = [];
 export function setPhases(v){ phases = v; }
 
-// toggles del gráfico de Evolución: mostrar bandas de fase / línea de meta de peso
-export let showPhases = true;
+// toggles del gráfico de Evolución: mostrar bandas de fase / línea de meta de peso (apagados por default)
+export let showPhases = false;
 export function setShowPhases(v){ showPhases = v; }
-export let showGoalLine = true;
+export let showGoalLine = false;
 export function setShowGoalLine(v){ showGoalLine = v; }
