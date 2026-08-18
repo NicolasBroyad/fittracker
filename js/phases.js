@@ -78,7 +78,7 @@ export function renderPhasePanel(){
     currentEl.innerHTML = `
       <span class="goal-phase-badge phase-${current.phase}">${PHASE_LABELS[current.phase]}</span>
       <span class="goal-phase-dates">desde ${fmtShort(fromISO(current.start_date))}</span>
-      <button class="btn-expand btn-finish-phase" id="btn-finish-phase">Finalizar fase</button>
+      <button class="btn-finish-phase" id="btn-finish-phase">Finalizar fase</button>
     `;
   } else {
     currentEl.innerHTML = '<span class="goal-phase-badge phase-none">Sin fase actual</span>';

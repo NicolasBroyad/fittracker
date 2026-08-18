@@ -68,6 +68,36 @@ function phaseLegendHtml(phaseKeys){
   ).join('');
 }
 
+// tooltip que muestra a qué fecha corresponde un punto al pasar el mouse o tocarlo (mobile).
+// container queda position:relative para poder posicionar el tooltip encima del punto tocado.
+function setupTooltip(svg, container){
+  const tooltip = document.createElement('div');
+  tooltip.className = 'chart-tooltip';
+  container.style.position = 'relative';
+  container.appendChild(tooltip);
+  const show = (x, y, text) => {
+    tooltip.textContent = text;
+    tooltip.style.left = x+'px';
+    tooltip.style.top = y+'px';
+    tooltip.classList.add('visible');
+  };
+  const hide = () => tooltip.classList.remove('visible');
+  svg.addEventListener('pointerdown', hide); // tocar/clickear afuera de un punto lo oculta
+  return { show, hide };
+}
+
+// círculo invisible más grande encima de un punto, para que sea fácil de tocar en mobile sin
+// agrandar el punto visible; muestra el tooltip al pasar el mouse o al tocarlo
+function addPointHitArea(svg, cx, cy, label, showTip, hideTip){
+  const hit = svgEl('circle', {cx, cy, r:10, fill:'transparent'});
+  hit.style.cursor = 'pointer';
+  hit.style.pointerEvents = 'all';
+  hit.addEventListener('pointerenter', ()=>showTip(cx, cy, label));
+  hit.addEventListener('pointerleave', hideTip);
+  hit.addEventListener('pointerdown', (e)=>{ e.stopPropagation(); showTip(cx, cy, label); });
+  svg.appendChild(hit);
+}
+
 export function renderChart(containerId, legendId, opts){
   opts = opts || {};
   const container = document.getElementById(containerId || 'chart-container');
@@ -118,11 +148,14 @@ export function renderChart(containerId, legendId, opts){
     svg.appendChild(svgEl('path', {d:pathD, fill:'none', stroke:'var(--accent)', 'stroke-width':2, 'stroke-linejoin':'round'}));
 
     // points + value labels
+    const { show: showTip, hide: hideTip } = setupTooltip(svg, container);
     weeks.forEach((w,i)=>{
-      svg.appendChild(svgEl('circle', {cx:xFor(i), cy:yFor(w.avg), r:3, fill:'var(--accent)'}));
+      const cx = xFor(i), cy = yFor(w.avg);
+      svg.appendChild(svgEl('circle', {cx, cy, r:3, fill:'var(--accent)'}));
+      addPointHitArea(svg, cx, cy, 'Semana del '+fmtShort(fromISO(w.date)), showTip, hideTip);
       const showLabel = weeks.length<=20 || i%2===0 || i===weeks.length-1;
       if(showLabel){
-        const lab = svgEl('text', {x:xFor(i), y:yFor(w.avg)-8, 'text-anchor':'middle', 'font-size':9, fill:'var(--ink-soft)', 'font-family':'JetBrains Mono, monospace'});
+        const lab = svgEl('text', {x:cx, y:cy-8, 'text-anchor':'middle', 'font-size':9, fill:'var(--ink-soft)', 'font-family':'JetBrains Mono, monospace'});
         lab.textContent = w.avg.toFixed(2);
         svg.appendChild(lab);
       }

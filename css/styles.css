@@ -342,6 +342,13 @@ body{
 .chart-scroll{ overflow-x:auto; padding-bottom:4px; }
 .chart-scroll::-webkit-scrollbar{ height:6px; }
 .chart-scroll::-webkit-scrollbar-thumb{ background:var(--line-strong); border-radius:4px; }
+.chart-tooltip{
+  position:absolute; transform:translate(-50%,-135%); pointer-events:none;
+  background:var(--ink); color:var(--paper); font-family:'JetBrains Mono', monospace;
+  font-size:0.72rem; font-weight:600; padding:4px 9px; border-radius:6px;
+  white-space:nowrap; opacity:0; transition:opacity .12s ease; z-index:5;
+}
+.chart-tooltip.visible{ opacity:1; }
 .chart-legend{ display:flex; gap:16px; margin-top:10px; font-size:0.68rem; color:var(--ink-soft); flex-wrap:wrap;}
 .chart-legend .k{ display:flex; align-items:center; gap:6px; }
 .chart-legend .swatch{ width:14px; height:2px; }
@@ -402,10 +409,11 @@ body{
 .goal-phase-current{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
 .goal-phase-dates{ font-size:0.78rem; color:var(--ink-soft); }
 .btn-finish-phase{
-  border:1px solid var(--line-strong); background:transparent; border-radius:999px; padding:5px 12px;
-  font-size:0.72rem; font-weight:600; color:var(--ink-soft); cursor:pointer; font-family:'Inter',sans-serif;
+  border:1px solid var(--loss); background:var(--loss-soft); border-radius:999px; padding:6px 14px;
+  font-size:0.72rem; font-weight:600; color:var(--loss); cursor:pointer; font-family:'Inter',sans-serif;
+  white-space:nowrap; flex:0 0 auto;
 }
-.btn-finish-phase:hover{ background:var(--loss-soft); color:var(--loss); border-color:var(--loss); }
+.btn-finish-phase:hover{ background:var(--loss); color:var(--paper-card); }
 .phase-history-item{ position:relative; padding-right:26px; }
 .phase-history-remove{
   border:none; background:transparent; color:var(--ink-faint); cursor:pointer;
@@ -780,7 +788,8 @@ body{
 
 /* field-row (dos campos lado a lado en un modal) */
 .field-row{ display:flex; gap:12px; }
-.field-row .field{ flex:1; }
+.field-row .field{ flex:1; min-width:0; }
+.field input[type="date"]{ min-width:0; }
 
 .field-checkbox{
   display:flex; align-items:center; gap:8px; margin:-4px 0 14px; cursor:pointer;
