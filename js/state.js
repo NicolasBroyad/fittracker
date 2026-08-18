@@ -19,6 +19,10 @@ export function setChartModalOpen(v){ chartModalOpen = v; }
 export let chartRange = 'all';
 export function setChartRangeState(v){ chartRange = v; }
 
-// { target_weight, phase, created_at } | null
+// { target_weight, created_at } | null
 export let currentGoal = null;
 export function setCurrentGoal(v){ currentGoal = v; }
+
+// fases (períodos): [{ id, phase, start_date, end_date }], end_date null = en curso. Orden: start_date desc
+export let phases = [];
+export function setPhases(v){ phases = v; }

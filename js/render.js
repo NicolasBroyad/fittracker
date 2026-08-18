@@ -1,9 +1,10 @@
 import { entries, viewMonth, setCurrentGoal } from './state.js';
-import { MONTHS, DOW, PHASE_LABELS, fromISO, toISO, todayISO, fmtShort, escapeHtml, trendArrowSvg } from './utils.js';
+import { MONTHS, DOW, fromISO, toISO, todayISO, fmtShort, escapeHtml, trendArrowSvg } from './utils.js';
 import { computeCurrent, computeTrend, computeStreak, computeMinMax, computeMonthlySummary, computeWeeklyAverage, sortedDates } from './derived.js';
 import { renderChart } from './chart.js';
 import { openDayModal } from './modal.js';
 import { loadRecentActivity, loadCurrentGoal, loadGoalHistory } from './storage.js';
+import { loadAndRenderPhases } from './phases.js';
 
 export function renderStats(){
   const cur = computeCurrent();
@@ -157,7 +158,6 @@ export async function renderGoal(){
 
   const weightEl = document.getElementById('goal-weight-display');
   const progressEl = document.getElementById('goal-progress');
-  const phaseEl = document.getElementById('goal-phase-badge');
   const cur = computeCurrent();
 
   if(goal && goal.target_weight != null){
@@ -179,14 +179,6 @@ export async function renderGoal(){
     progressEl.textContent = '';
   }
 
-  if(goal && goal.phase){
-    phaseEl.textContent = PHASE_LABELS[goal.phase];
-    phaseEl.className = 'goal-phase-badge phase-'+goal.phase;
-  } else {
-    phaseEl.textContent = 'Sin fase definida';
-    phaseEl.className = 'goal-phase-badge phase-none';
-  }
-
   const histList = document.getElementById('goal-history-list');
   const rows = await loadGoalHistory(10);
   if(rows.length === 0){
@@ -196,9 +188,8 @@ export async function renderGoal(){
   histList.innerHTML = rows.map(r=>{
     const when = fmtDateTime(r.created_at);
     const w = r.target_weight != null ? Number(r.target_weight).toFixed(2)+' kg' : 'sin meta';
-    const p = r.phase ? PHASE_LABELS[r.phase] : 'sin fase';
     return `<div class="activity-item">
-      <span class="act-detail">${w} · ${p}</span>
+      <span class="act-detail">${w}</span>
       <span class="act-when">${when}</span>
     </div>`;
   }).join('');
@@ -254,13 +245,14 @@ export function renderMonthlySummary(){
   `;
 }
 
-export function renderAll(){
+export async function renderAll(){
   renderStats();
   renderCalendar();
   renderMonthlySummary();
-  renderChart();
   renderNotes();
   renderRecords();
   renderActivity();
-  renderGoal();
+  // el gráfico dibuja la meta y las fases, así que necesita que ya estén cargadas en el estado
+  await Promise.all([renderGoal(), loadAndRenderPhases()]);
+  renderChart();
 }

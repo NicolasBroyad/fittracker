@@ -55,7 +55,7 @@ export async function loadRecentActivity(limit = 20){
 
 export async function loadCurrentGoal(){
   const { data, error } = await sb.from('weight_goals')
-    .select('target_weight,phase,created_at')
+    .select('target_weight,created_at')
     .order('created_at', { ascending: false })
     .limit(1)
     .maybeSingle();
@@ -65,13 +65,34 @@ export async function loadCurrentGoal(){
 
 export async function loadGoalHistory(limit = 10){
   const { data, error } = await sb.from('weight_goals')
-    .select('target_weight,phase,created_at')
+    .select('target_weight,created_at')
     .order('created_at', { ascending: false })
     .limit(limit);
   if(error){ console.error(error); return []; }
   return data || [];
 }
 
-export async function saveGoal(targetWeight, phase){
-  return sb.from('weight_goals').insert({ target_weight: targetWeight, phase });
+export async function saveGoal(targetWeight){
+  return sb.from('weight_goals').insert({ target_weight: targetWeight });
+}
+
+// fases (períodos de volumen/definición/mantenimiento): end_date null = fase en curso
+export async function loadPhases(){
+  const { data, error } = await sb.from('weight_phases')
+    .select('id,phase,start_date,end_date')
+    .order('start_date', { ascending: false });
+  if(error){ console.error(error); return []; }
+  return data || [];
+}
+
+export async function createPhase(phase, startDate, endDate){
+  return sb.from('weight_phases').insert({ phase, start_date: startDate, end_date: endDate || null }).select('id').single();
+}
+
+export async function finishPhase(id, endDate){
+  return sb.from('weight_phases').update({ end_date: endDate }).eq('id', id);
+}
+
+export async function deletePhase(id){
+  return sb.from('weight_phases').delete().eq('id', id);
 }

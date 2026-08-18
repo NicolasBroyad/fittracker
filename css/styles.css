@@ -396,6 +396,25 @@ body{
 .goal-history[open] summary::before{ content:"▾"; }
 .goal-history .activity-list{ margin-top:10px; }
 
+.goal-phase-block{ margin-top:20px; padding-top:18px; border-top:1px solid var(--line); }
+.goal-phase-head{ display:flex; justify-content:space-between; align-items:center; margin-bottom:10px; }
+.goal-phase-head .goal-label{ margin-bottom:0; }
+.goal-phase-current{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+.goal-phase-dates{ font-size:0.78rem; color:var(--ink-soft); }
+.btn-finish-phase{
+  border:1px solid var(--line-strong); background:transparent; border-radius:999px; padding:5px 12px;
+  font-size:0.72rem; font-weight:600; color:var(--ink-soft); cursor:pointer; font-family:'Inter',sans-serif;
+}
+.btn-finish-phase:hover{ background:var(--loss-soft); color:var(--loss); border-color:var(--loss); }
+.phase-history-item{ position:relative; padding-right:26px; }
+.phase-history-remove{
+  border:none; background:transparent; color:var(--ink-faint); cursor:pointer;
+  position:absolute; right:0; top:8px; padding:4px;
+}
+.phase-history-remove:hover{ color:var(--loss); }
+
+.field-hint{ font-size:0.72rem; color:var(--ink-faint); margin:-8px 0 14px; }
+
 /* monthly summary */
 .month-summary-panel{ margin-top:14px; }
 .month-grid{

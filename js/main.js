@@ -6,6 +6,7 @@ import { setActiveTab, setChartRange, openChartModal, closeChartModal, rerenderI
 import { wireAuth, checkSession } from './auth.js';
 import { initTheme } from './theme.js';
 import { openGoalModal, closeGoalModal, submitGoal, clearGoal } from './goal.js';
+import { openPhaseModal, closePhaseModal, submitPhase, finishCurrentPhase, deletePhaseEntry } from './phases.js';
 import { exportCSV } from './export.js';
 import { wireSwipeNav, animateToScreen } from './swipe-nav.js';
 import {
@@ -53,6 +54,15 @@ document.getElementById('goal-modal-cancel').addEventListener('click', closeGoal
 document.getElementById('goal-modal-save').addEventListener('click', submitGoal);
 document.getElementById('btn-goal-clear').addEventListener('click', clearGoal);
 document.getElementById('goal-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='goal-modal-overlay') closeGoalModal(); });
+document.getElementById('btn-phase-add').addEventListener('click', openPhaseModal);
+document.getElementById('phase-modal-cancel').addEventListener('click', closePhaseModal);
+document.getElementById('phase-modal-save').addEventListener('click', submitPhase);
+document.getElementById('phase-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='phase-modal-overlay') closePhaseModal(); });
+document.getElementById('goal-panel').addEventListener('click', (e)=>{
+  if(e.target.closest('#btn-finish-phase')){ finishCurrentPhase(); return; }
+  const removeBtn = e.target.closest('.phase-history-remove');
+  if(removeBtn) deletePhaseEntry(removeBtn.dataset.id);
+});
 document.getElementById('btn-export-csv').addEventListener('click', exportCSV);
 
 document.getElementById('tab-screen-home').addEventListener('click', ()=>animateToScreen('home'));

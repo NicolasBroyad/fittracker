@@ -1,5 +1,5 @@
-import { activeTab, chartRange } from './state.js';
-import { fromISO, fmtShort, rangeCutoffISO } from './utils.js';
+import { activeTab, chartRange, phases, currentGoal } from './state.js';
+import { fromISO, fmtShort, rangeCutoffISO, todayISO, PHASE_LABELS } from './utils.js';
 import { weeklyAverages, dailyWithMovingAvg, linreg } from './derived.js';
 
 function svgEl(tag, attrs){
@@ -17,6 +17,57 @@ function niceTicks(min, max, count){
   return ticks;
 }
 
+const PHASE_COLORS = { volumen: 'var(--accent)', definicion: 'var(--loss)', mantenimiento: 'var(--brass)' };
+
+// agrupa puntos consecutivos (por índice) que caen dentro de la misma fase, para poder
+// dibujar un solo rectángulo de fondo por tramo en vez de uno por punto
+function phaseSegments(points){
+  if(phases.length === 0) return [];
+  const today = todayISO();
+  const segs = [];
+  let cur = null;
+  points.forEach((p, i) => {
+    const match = phases.find(ph => p.date >= ph.start_date && p.date <= (ph.end_date || today));
+    const key = match ? match.phase : null;
+    if(cur && cur.key === key){ cur.end = i; }
+    else { if(cur) segs.push(cur); cur = { key, start: i, end: i }; }
+  });
+  if(cur) segs.push(cur);
+  return segs.filter(s => s.key);
+}
+
+// dibuja las bandas de fondo de fase + la línea punteada de meta de peso; se llama antes de
+// dibujar la data para que ambas queden detrás. Devuelve qué se dibujó, para armar la leyenda.
+function drawBackgroundLayers(svg, points, xFor, yFor, padL, padR, padT, padB, width, rowH, targetWeight){
+  const drawn = { phaseKeys: new Set(), target: false };
+  const segs = phaseSegments(points);
+  if(segs.length > 0){
+    const halfStep = points.length > 1 ? (xFor(1)-xFor(0))/2 : 14;
+    segs.forEach(seg => {
+      const x1 = Math.max(padL, xFor(seg.start)-halfStep);
+      const x2 = Math.min(width-padR, xFor(seg.end)+halfStep);
+      if(x2 <= x1) return;
+      svg.appendChild(svgEl('rect', {
+        x:x1, y:padT, width:x2-x1, height:rowH-padT-padB,
+        fill:PHASE_COLORS[seg.key] || 'var(--ink-faint)', opacity:0.13,
+      }));
+      drawn.phaseKeys.add(seg.key);
+    });
+  }
+  if(targetWeight != null){
+    const y = yFor(targetWeight);
+    svg.appendChild(svgEl('line', {x1:padL, x2:width-padR, y1:y, y2:y, stroke:'var(--ink-soft)', 'stroke-width':1.4, 'stroke-dasharray':'6,4'}));
+    drawn.target = true;
+  }
+  return drawn;
+}
+
+function phaseLegendHtml(phaseKeys){
+  return Array.from(phaseKeys).map(k =>
+    `<div class="k"><span class="swatch" style="background:${PHASE_COLORS[k]}; opacity:0.5;"></span>${PHASE_LABELS[k]}</div>`
+  ).join('');
+}
+
 export function renderChart(containerId, legendId, opts){
   opts = opts || {};
   const container = document.getElementById(containerId || 'chart-container');
@@ -27,12 +78,14 @@ export function renderChart(containerId, legendId, opts){
   const padL=42, padR=16, padT=18, padB=34;
   const rowH = opts.rowH || 260;
 
+  const targetWeight = currentGoal && currentGoal.target_weight != null ? Number(currentGoal.target_weight) : null;
+
   if(activeTab === 'weekly'){
     const weeks = weeklyAverages(rangeCutoffISO(chartRange));
     if(weeks.length===0){ container.innerHTML = '<div class="empty-state">No hay datos en el período seleccionado.</div>'; return; }
     const width = Math.max(container.parentElement.clientWidth || 480, 480);
     const innerW = width-padL-padR;
-    const vals = weeks.map(w=>w.avg);
+    const vals = weeks.map(w=>w.avg).concat(targetWeight != null ? [targetWeight] : []);
     const minV = Math.min(...vals), maxV = Math.max(...vals);
     const yTicks = niceTicks(minV-0.3, maxV+0.3, 5);
     const yMin = yTicks[0], yMax = yTicks[yTicks.length-1];
@@ -40,6 +93,8 @@ export function renderChart(containerId, legendId, opts){
     const yFor = v => padT + (rowH-padT-padB) * (1 - (v-yMin)/(yMax-yMin));
 
     const svg = svgEl('svg', {viewBox:`0 0 ${width} ${rowH}`, width:'100%', height:rowH});
+
+    const bgDrawn = drawBackgroundLayers(svg, weeks, xFor, yFor, padL, padR, padT, padB, width, rowH, targetWeight);
 
     // gridlines + y labels
     yTicks.forEach(t=>{
@@ -85,7 +140,9 @@ export function renderChart(containerId, legendId, opts){
     container.appendChild(svg);
     legend.innerHTML = `
       <div class="k"><span class="swatch" style="background:var(--accent)"></span>promedio semanal</div>
-      <div class="k"><span class="swatch" style="background:var(--brass); border-top:2px dashed var(--brass); background:none;"></span>tendencia lineal</div>`;
+      <div class="k"><span class="swatch" style="background:var(--brass); border-top:2px dashed var(--brass); background:none;"></span>tendencia lineal</div>
+      ${bgDrawn.target ? '<div class="k"><span class="swatch" style="border-top:2px dashed var(--ink-soft); background:none;"></span>meta de peso</div>' : ''}
+      ${phaseLegendHtml(bgDrawn.phaseKeys)}`;
   }
 
   if(activeTab === 'daily'){
@@ -94,7 +151,7 @@ export function renderChart(containerId, legendId, opts){
     const spacing = opts.spacing || 20;
     const width = Math.max((container.parentElement.clientWidth || 480), padL+padR+spacing*(daily.length-1)+20);
     const innerW = width-padL-padR;
-    const vals = daily.map(d=>d.weight);
+    const vals = daily.map(d=>d.weight).concat(targetWeight != null ? [targetWeight] : []);
     const minV = Math.min(...vals), maxV = Math.max(...vals);
     const yTicks = niceTicks(minV-0.3, maxV+0.3, 5);
     const yMin = yTicks[0], yMax = yTicks[yTicks.length-1];
@@ -102,6 +159,8 @@ export function renderChart(containerId, legendId, opts){
     const yFor = v => padT + (rowH-padT-padB) * (1 - (v-yMin)/(yMax-yMin));
 
     const svg = svgEl('svg', {viewBox:`0 0 ${width} ${rowH}`, width:width, height:rowH});
+
+    const bgDrawn = drawBackgroundLayers(svg, daily, xFor, yFor, padL, padR, padT, padB, width, rowH, targetWeight);
 
     yTicks.forEach(t=>{
       const y = yFor(t);
@@ -134,6 +193,8 @@ export function renderChart(containerId, legendId, opts){
     container.appendChild(svg);
     legend.innerHTML = `
       <div class="k"><span class="swatch" style="background:var(--line-strong)"></span>peso diario</div>
-      <div class="k"><span class="swatch" style="background:var(--brass)"></span>promedio móvil 7d</div>`;
+      <div class="k"><span class="swatch" style="background:var(--brass)"></span>promedio móvil 7d</div>
+      ${bgDrawn.target ? '<div class="k"><span class="swatch" style="border-top:2px dashed var(--ink-soft); background:none;"></span>meta de peso</div>' : ''}
+      ${phaseLegendHtml(bgDrawn.phaseKeys)}`;
   }
 }
