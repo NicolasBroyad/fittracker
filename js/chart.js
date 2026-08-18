@@ -62,6 +62,13 @@ function drawBackgroundLayers(svg, points, xFor, yFor, padL, padR, padT, padB, w
   return drawn;
 }
 
+// "1 ago – 7 ago · 78.40 kg" -- rango de la semana (lunes a domingo) + promedio de esa semana
+function weekTooltipLabel(w){
+  const start = fromISO(w.date);
+  const end = new Date(start); end.setDate(end.getDate()+6);
+  return fmtShort(start)+' – '+fmtShort(end)+' · '+w.avg.toFixed(2)+' kg';
+}
+
 function phaseLegendHtml(phaseKeys){
   return Array.from(phaseKeys).map(k =>
     `<div class="k"><span class="swatch" style="background:${PHASE_COLORS[k]}; opacity:0.5;"></span>${PHASE_LABELS[k]}</div>`
@@ -113,7 +120,7 @@ export function renderChart(containerId, legendId, opts){
   if(activeTab === 'weekly'){
     const weeks = weeklyAverages(rangeCutoffISO(chartRange));
     if(weeks.length===0){ container.innerHTML = '<div class="empty-state">No hay datos en el período seleccionado.</div>'; return; }
-    const width = Math.max(container.parentElement.clientWidth || 480, 480);
+    const width = container.parentElement.clientWidth || 480;
     const innerW = width-padL-padR;
     const vals = weeks.map(w=>w.avg).concat(targetWeight != null ? [targetWeight] : []);
     const minV = Math.min(...vals), maxV = Math.max(...vals);
@@ -152,7 +159,7 @@ export function renderChart(containerId, legendId, opts){
     weeks.forEach((w,i)=>{
       const cx = xFor(i), cy = yFor(w.avg);
       svg.appendChild(svgEl('circle', {cx, cy, r:3, fill:'var(--accent)'}));
-      addPointHitArea(svg, cx, cy, 'Semana del '+fmtShort(fromISO(w.date)), showTip, hideTip);
+      addPointHitArea(svg, cx, cy, weekTooltipLabel(w), showTip, hideTip);
       const showLabel = weeks.length<=20 || i%2===0 || i===weeks.length-1;
       if(showLabel){
         const lab = svgEl('text', {x:cx, y:cy-8, 'text-anchor':'middle', 'font-size':9, fill:'var(--ink-soft)', 'font-family':'JetBrains Mono, monospace'});
