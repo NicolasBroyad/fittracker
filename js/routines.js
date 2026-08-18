@@ -10,6 +10,7 @@ import {
   exerciseCalendarMonth, setExerciseCalendarMonth,
   exerciseCalendarSessions, setExerciseCalendarSessions,
   gymVolumeWeek, setGymVolumeWeek,
+  gymSummaryMonth,
 } from './routines-state.js';
 import {
   loadRoutineDays, loadExercisesWithDays, saveRoutineDay,
@@ -486,6 +487,17 @@ export async function gymVolumeWeekPrev(){
 export async function gymVolumeWeekNext(){
   const next = new Date(gymVolumeWeek); next.setDate(next.getDate()+7);
   setGymVolumeWeek(next);
+  await renderGym();
+}
+
+// ---------- Resumen mensual de gimnasio (pantalla de Gimnasio) ----------
+
+export async function gymSummaryMonthPrev(){
+  gymSummaryMonth.setMonth(gymSummaryMonth.getMonth()-1);
+  await renderGym();
+}
+export async function gymSummaryMonthNext(){
+  gymSummaryMonth.setMonth(gymSummaryMonth.getMonth()+1);
   await renderGym();
 }
 

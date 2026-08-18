@@ -18,6 +18,7 @@ import {
   closeAssignModal, renderAssignList, createFromAssignModal,
   closeDayTargetModal, saveDayTargetModal,
   gymVolumeWeekPrev, gymVolumeWeekNext,
+  gymSummaryMonthPrev, gymSummaryMonthNext,
 } from './routines.js';
 
 initTheme();
@@ -96,6 +97,8 @@ document.getElementById('home-container').addEventListener('click', (e)=>{
 document.getElementById('gym-container').addEventListener('click', (e)=>{
   if(e.target.closest('#gym-volume-prev')){ gymVolumeWeekPrev(); return; }
   if(e.target.closest('#gym-volume-next')){ gymVolumeWeekNext(); return; }
+  if(e.target.closest('#gym-summary-prev')){ gymSummaryMonthPrev(); return; }
+  if(e.target.closest('#gym-summary-next')){ gymSummaryMonthNext(); return; }
   const row = e.target.closest('.gym-history-item');
   if(row) openSessionModal(row.dataset.exerciseId, row.dataset.date);
 });

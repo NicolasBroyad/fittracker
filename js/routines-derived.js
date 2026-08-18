@@ -1,4 +1,4 @@
-import { toISO } from './utils.js';
+import { toISO, fromISO } from './utils.js';
 
 // logs: [{ session_date, set_number, weight, reps }] ordenados por fecha desc, set_number asc
 export function groupLogsBySession(logs){
@@ -170,30 +170,36 @@ export function computeGymStreak(routineDays, routineExercises, logsByExercise){
   return count;
 }
 
-// top ejercicios por mejora: peso máximo de la primera sesión vs. el mejor registro actual.
-// Requiere al menos 2 sesiones distintas y una mejora positiva.
+// PRs (récords personales): recorre las sesiones de cada ejercicio en orden cronológico y marca
+// las que establecieron un peso máximo nunca antes alcanzado por ESE ejercicio. La primera sesión
+// de un ejercicio nunca cuenta como PR (no hay nada previo que superar) — hace falta al menos un
+// intento anterior para que un peso nuevo sea "récord". Con empate de peso, se toma el mayor de reps
+// de esa serie como dato del PR, pero no se considera un PR nuevo (ya está el peso, cambian solo reps).
 // exercises: lista de ejercicios únicos del catálogo (Object.values(exercisesById))
-export function computeMostImproved(exercises, logsByExercise, topN){
-  const results = [];
+// -> [{ exerciseId, exerciseName, date, weight, reps }], más recientes primero
+export function computeRecentPRs(exercises, logsByExercise, limit){
+  const prs = [];
   exercises.forEach(ex => {
     const logs = logsByExercise[ex.id] || [];
-    const withWeight = logs.filter(l => l.weight != null);
-    if(withWeight.length === 0) return;
-    let firstDate = withWeight[0].session_date;
-    withWeight.forEach(l => { if(l.session_date < firstDate) firstDate = l.session_date; });
-    const firstWeight = Math.max(...withWeight.filter(l => l.session_date === firstDate).map(l => Number(l.weight)));
-    const best = computeBestSession(logs);
-    if(!best || best.date === firstDate) return;
-    const bestWeight = Math.max(...best.sets.filter(s => s.weight != null).map(s => Number(s.weight)));
-    const delta = bestWeight - firstWeight;
-    if(delta <= 0) return;
-    results.push({
-      exerciseId: ex.id, exerciseName: ex.name, muscleGroup: ex.muscle_group,
-      firstWeight, firstDate, bestWeight, bestDate: best.date, delta,
+    const sessions = groupLogsBySession(logs).sort((a, b) => a.date.localeCompare(b.date));
+    let bestWeight = null;
+    sessions.forEach(s => {
+      const withWeight = s.sets.filter(x => x.weight != null);
+      if(withWeight.length === 0) return;
+      const maxWeight = Math.max(...withWeight.map(x => Number(x.weight)));
+      if(bestWeight === null){
+        bestWeight = maxWeight; // primera sesión con peso: fija la base, todavía no hay nada que superar
+        return;
+      }
+      if(maxWeight > bestWeight){
+        const reps = Math.max(...withWeight.filter(x => Number(x.weight) === maxWeight).map(x => x.reps || 0));
+        prs.push({ exerciseId: ex.id, exerciseName: ex.name, date: s.date, weight: maxWeight, reps });
+        bestWeight = maxWeight;
+      }
     });
   });
-  results.sort((a,b) => b.delta - a.delta);
-  return topN ? results.slice(0, topN) : results;
+  prs.sort((a, b) => b.date.localeCompare(a.date));
+  return limit ? prs.slice(0, limit) : prs;
 }
 
 // series totales por grupo muscular dentro de una semana natural puntual (ambos límites inclusive).
@@ -222,4 +228,42 @@ export function computeAllSessionsHistory(exercises, logsByExercise){
   });
   rows.sort((a,b) => b.date.localeCompare(a.date));
   return rows;
+}
+
+// series totales cargadas y días distintos entrenados dentro de un mes puntual, sin importar el
+// ejercicio ni el grupo muscular — cuenta CUALQUIER set de logsByExercise (todos los ejercicios)
+function monthGymActivity(year, month, logsByExercise){
+  let totalSets = 0;
+  const trainedDays = new Set();
+  Object.values(logsByExercise).forEach(logs => {
+    logs.forEach(l => {
+      const d = fromISO(l.session_date);
+      if(d.getFullYear() === year && d.getMonth() === month){
+        totalSets++;
+        trainedDays.add(l.session_date);
+      }
+    });
+  });
+  return { totalSets, trainedDays: trainedDays.size };
+}
+
+// resumen mensual de gimnasio: sesiones (días con al menos un set), series totales, promedio de
+// series por sesión, y comparación contra el mes anterior. null si no hubo ninguna serie ese mes.
+export function computeGymMonthlySummary(viewMonth, logsByExercise){
+  const year = viewMonth.getFullYear(), month = viewMonth.getMonth();
+  const { totalSets, trainedDays } = monthGymActivity(year, month, logsByExercise);
+  if(totalSets === 0) return null;
+
+  let prevMonth = month-1, prevYear = year;
+  if(prevMonth < 0){ prevMonth = 11; prevYear--; }
+  const prev = monthGymActivity(prevYear, prevMonth, logsByExercise);
+
+  return {
+    totalSets, trainedDays,
+    daysInMonth: new Date(year, month+1, 0).getDate(),
+    avgPerSession: totalSets / trainedDays,
+    prevTotalSets: prev.totalSets,
+    hasPrevData: prev.trainedDays > 0,
+    delta: totalSets - prev.totalSets,
+  };
 }

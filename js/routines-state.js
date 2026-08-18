@@ -69,3 +69,9 @@ export function setExerciseCalendarSessions(v){ exerciseCalendarSessions = v; }
 // lunes de la semana que se está viendo en "Volumen semanal" (pantalla de Gimnasio)
 export let gymVolumeWeek = mondayOf(new Date());
 export function setGymVolumeWeek(v){ gymVolumeWeek = v; }
+
+// mes que se está viendo en "Resumen mensual" (pantalla de Gimnasio) — se muta directo con
+// .setMonth(), mismo patrón que viewMonth en state.js, no necesita setter propio
+export let gymSummaryMonth = new Date();
+gymSummaryMonth.setDate(1);
+gymSummaryMonth.setHours(0,0,0,0);
