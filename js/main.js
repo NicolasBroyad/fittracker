@@ -17,6 +17,7 @@ import {
   closeSessionModal, saveSession, openSessionModal,
   closeAssignModal, renderAssignList, createFromAssignModal,
   closeDayTargetModal, saveDayTargetModal,
+  gymVolumeWeekPrev, gymVolumeWeekNext,
 } from './routines.js';
 
 initTheme();
@@ -93,6 +94,8 @@ document.getElementById('home-container').addEventListener('click', (e)=>{
   if(e.target.closest('.home-goto-rutina-btn')){ animateToScreen('rutina'); return; }
 });
 document.getElementById('gym-container').addEventListener('click', (e)=>{
+  if(e.target.closest('#gym-volume-prev')){ gymVolumeWeekPrev(); return; }
+  if(e.target.closest('#gym-volume-next')){ gymVolumeWeekNext(); return; }
   const row = e.target.closest('.gym-history-item');
   if(row) openSessionModal(row.dataset.exerciseId, row.dataset.date);
 });

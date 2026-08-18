@@ -793,6 +793,14 @@ body{
 .improved-arrow{ color:var(--ink-faint); }
 .improved-delta{ color:var(--accent); font-weight:700; margin-left:4px; }
 
+.volume-list{ display:flex; flex-direction:column; gap:14px; }
+.volume-row-head{ display:flex; justify-content:space-between; align-items:baseline; margin-bottom:6px; }
+.volume-label{ font-size:0.86rem; font-weight:600; color:var(--ink); }
+.volume-value{ font-family:'JetBrains Mono', monospace; font-size:0.82rem; font-weight:700; color:var(--ink-soft); }
+.volume-value .unit{ font-size:0.68rem; font-weight:500; color:var(--ink-faint); margin-left:3px; }
+.volume-bar-track{ height:8px; background:var(--paper-deep); border-radius:999px; overflow:hidden; }
+.volume-bar-fill{ height:100%; background:var(--accent); border-radius:999px; }
+
 .gym-history-list{ max-height:420px; overflow-y:auto; }
 .gym-history-item{ cursor:pointer; }
 

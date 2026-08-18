@@ -1,7 +1,7 @@
-import { routineDays, routineExercises, exercisesById, MUSCLE_GROUP_LABELS } from './routines-state.js';
+import { routineDays, routineExercises, exercisesById, MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, gymVolumeWeek } from './routines-state.js';
 import { loadAllLogsGroupedByExercise } from './routines-storage.js';
-import { computeGymStreak, computeMostImproved, computeAllSessionsHistory, formatSessionSets } from './routines-derived.js';
-import { fromISO, fmtShort, escapeHtml } from './utils.js';
+import { computeGymStreak, computeMostImproved, computeAllSessionsHistory, computeWeeklyMuscleVolume, formatSessionSets } from './routines-derived.js';
+import { fromISO, toISO, fmtShort, mondayOf, escapeHtml } from './utils.js';
 
 function streakCardHtml(count){
   let ticks = '';
@@ -43,6 +43,38 @@ function historyListHtml(rows){
   </div>`).join('');
 }
 
+function volumeRowHtml(group, sets, maxSets){
+  const pct = Math.max(4, Math.round((sets/maxSets)*100));
+  return `<div class="volume-row">
+    <div class="volume-row-head">
+      <span class="volume-label">${escapeHtml(MUSCLE_GROUP_LABELS[group] || group)}</span>
+      <span class="volume-value">${sets}<span class="unit">series</span></span>
+    </div>
+    <div class="volume-bar-track"><div class="volume-bar-fill" style="width:${pct}%"></div></div>
+  </div>`;
+}
+
+function volumeCardHtml(logsByExercise){
+  const weekStart = gymVolumeWeek;
+  const weekEnd = new Date(weekStart); weekEnd.setDate(weekEnd.getDate()+6);
+  const totals = computeWeeklyMuscleVolume(toISO(weekStart), toISO(weekEnd), exercisesById, logsByExercise);
+  const maxSets = Math.max(1, ...Object.values(totals));
+  const rows = MUSCLE_GROUPS.filter(g => totals[g]).map(g => volumeRowHtml(g, totals[g], maxSets)).join('');
+  const isCurrentWeek = toISO(weekStart) === toISO(mondayOf(new Date()));
+
+  return `<div class="panel">
+    <div class="panel-head">
+      <h2>Volumen semanal</h2>
+      <div class="cal-nav">
+        <button id="gym-volume-prev" title="Semana anterior">‹</button>
+        <div class="cal-month-label">${fmtShort(weekStart)} – ${fmtShort(weekEnd)}</div>
+        <button id="gym-volume-next" title="Semana siguiente" ${isCurrentWeek ? 'disabled' : ''}>›</button>
+      </div>
+    </div>
+    ${rows ? `<div class="volume-list">${rows}</div>` : '<div class="empty-state">Sin series registradas esta semana.</div>'}
+  </div>`;
+}
+
 export async function renderGym(){
   const container = document.getElementById('gym-container');
   if(!container) return;
@@ -53,6 +85,7 @@ export async function renderGym(){
   const history = computeAllSessionsHistory(exercisesList, logsByExercise);
 
   container.innerHTML = streakCardHtml(streak)
+    + volumeCardHtml(logsByExercise)
     + `<div class="panel">
         <div class="panel-head"><h2>Ejercicios que más mejoraron</h2></div>
         <div class="improved-list">${improvedListHtml(improved)}</div>

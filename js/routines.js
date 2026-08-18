@@ -9,6 +9,7 @@ import {
   exerciseCalendarExerciseId, setExerciseCalendarExerciseId,
   exerciseCalendarMonth, setExerciseCalendarMonth,
   exerciseCalendarSessions, setExerciseCalendarSessions,
+  gymVolumeWeek, setGymVolumeWeek,
 } from './routines-state.js';
 import {
   loadRoutineDays, loadExercisesWithDays, saveRoutineDay,
@@ -473,6 +474,19 @@ async function pickExerciseCalendarDay(iso){
   const dayOfWeek = calendarDayOfWeek;
   closeExerciseCalendar();
   await openSessionModal(exerciseId, iso, dayOfWeek);
+}
+
+// ---------- Volumen semanal por grupo muscular (pantalla de Gimnasio) ----------
+
+export async function gymVolumeWeekPrev(){
+  const prev = new Date(gymVolumeWeek); prev.setDate(prev.getDate()-7);
+  setGymVolumeWeek(prev);
+  await renderGym();
+}
+export async function gymVolumeWeekNext(){
+  const next = new Date(gymVolumeWeek); next.setDate(next.getDate()+7);
+  setGymVolumeWeek(next);
+  await renderGym();
 }
 
 // ---------- Delegación de clicks sobre el contenido dinámico ----------

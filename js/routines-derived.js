@@ -196,6 +196,20 @@ export function computeMostImproved(exercises, logsByExercise, topN){
   return topN ? results.slice(0, topN) : results;
 }
 
+// series totales por grupo muscular dentro de una semana natural puntual (ambos límites inclusive).
+// exercisesById: catálogo completo (para leer el muscle_group de cada ejercicio)
+// -> { [muscleGroup]: series }, solo incluye grupos con al menos una serie esa semana
+export function computeWeeklyMuscleVolume(weekStartISO, weekEndISO, exercisesById, logsByExercise){
+  const totals = {};
+  Object.values(exercisesById).forEach(ex => {
+    if(!ex.muscle_group) return;
+    const logs = logsByExercise[ex.id] || [];
+    const count = logs.filter(l => l.session_date >= weekStartISO && l.session_date <= weekEndISO).length;
+    if(count > 0) totals[ex.muscle_group] = (totals[ex.muscle_group] || 0) + count;
+  });
+  return totals;
+}
+
 // todas las sesiones de todos los ejercicios, más recientes primero
 // exercises: lista de ejercicios únicos del catálogo (Object.values(exercisesById))
 export function computeAllSessionsHistory(exercises, logsByExercise){

@@ -1,3 +1,5 @@
+import { mondayOf } from './utils.js';
+
 export const DAY_NAMES = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
 export const DOW_ABBR = ['lun','mar','mié','jue','vie','sáb','dom'];
 export const MUSCLE_GROUPS = ['Pierna','Pecho','Hombro','Tricep','Biceps','Espalda'];
@@ -63,3 +65,7 @@ export function setExerciseCalendarMonth(v){ exerciseCalendarMonth = v; }
 // Map fecha ISO -> sets [{weight,reps}], para el ejercicio abierto en el calendario
 export let exerciseCalendarSessions = new Map();
 export function setExerciseCalendarSessions(v){ exerciseCalendarSessions = v; }
+
+// lunes de la semana que se está viendo en "Volumen semanal" (pantalla de Gimnasio)
+export let gymVolumeWeek = mondayOf(new Date());
+export function setGymVolumeWeek(v){ gymVolumeWeek = v; }
