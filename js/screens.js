@@ -1,6 +1,7 @@
 import { loadRoutines, updateTodayScrollHint } from './routines.js';
 import { renderHome } from './home-render.js';
 import { renderGym } from './gym-render.js';
+import { rerenderIfOpen } from './chart-modal.js';
 
 export const SCREEN_ORDER = ['home', 'peso', 'rutina', 'gimnasio'];
 let routinesLoaded = false;
@@ -22,7 +23,12 @@ export async function switchScreen(screen){
     document.getElementById('screen-'+s).classList.toggle('hidden', s !== screen);
     document.getElementById('tab-screen-'+s).classList.toggle('active', s === screen);
   });
-  if(screen === 'home'){
+  if(screen === 'peso'){
+    // el primer renderChart() de la carga inicial pasa con esta pantalla todavía oculta
+    // (Home es la pantalla por defecto), así que mide ancho 0 — al mostrar Peso por primera
+    // vez conviene re-dibujar con una medición real en vez de esperar a la próxima interacción
+    rerenderIfOpen();
+  } else if(screen === 'home'){
     await ensureRoutinesLoaded();
     await renderHome();
   } else if(screen === 'rutina'){

@@ -3,6 +3,7 @@ import { todayISO } from './utils.js';
 import { renderCalendar, renderMonthlySummary } from './render.js';
 import { openModal, closeModal, saveEntry, deleteEntry, closeViewModal, editFromViewModal } from './modal.js';
 import { setActiveTab, setChartRange, openChartModal, closeChartModal, rerenderIfOpen, toggleShowPhases, toggleShowGoalLine } from './chart-modal.js';
+import { invalidateChartWidthCache } from './chart.js';
 import { wireAuth, checkSession } from './auth.js';
 import { initTheme } from './theme.js';
 import { openGoalModal, closeGoalModal, submitGoal, clearGoal } from './goal.js';
@@ -20,7 +21,7 @@ import {
 
 initTheme();
 
-window.addEventListener('resize', rerenderIfOpen);
+window.addEventListener('resize', ()=>{ invalidateChartWidthCache(); rerenderIfOpen(); });
 
 document.getElementById('cal-prev').addEventListener('click', ()=>{
   viewMonth.setMonth(viewMonth.getMonth()-1);

@@ -19,6 +19,25 @@ function niceTicks(min, max, count){
 
 const PHASE_COLORS = { volumen: 'var(--accent)', definicion: 'var(--loss)', mantenimiento: 'var(--brass)' };
 
+// ancho medido de cada contenedor, cacheado por id: una vez medido con un valor VÁLIDO (>0), todos
+// los re-renders posteriores (togglear fases/meta, cambiar de tab, cambiar el rango) reusan ese
+// mismo valor en vez de volver a medir — así el gráfico nunca "salta" de tamaño. El primer render
+// de la pantalla de Peso pasa mientras esa pantalla todavía está oculta (Home es la pantalla por
+// defecto), así que clientWidth da 0 en ese momento — un 0 nunca se cachea, se sigue midiendo en
+// cada llamada hasta que el contenedor esté realmente visible y dé un valor real, que ahí sí queda
+// fijo. invalidateChartWidthCache() se llama solo ante un window.resize real.
+const widthCache = {};
+export function invalidateChartWidthCache(){
+  Object.keys(widthCache).forEach(k => delete widthCache[k]);
+}
+function measuredWidth(containerId, container, fallback){
+  if(widthCache[containerId] != null) return widthCache[containerId];
+  const real = container.parentElement.clientWidth;
+  if(!real) return fallback; // contenedor todavía oculto: no cachear un valor inválido
+  widthCache[containerId] = real;
+  return real;
+}
+
 // agrupa puntos consecutivos (por índice) que caen dentro de la misma fase, para poder
 // dibujar un solo rectángulo de fondo por tramo en vez de uno por punto
 function phaseSegments(points){
@@ -76,17 +95,35 @@ function phaseLegendHtml(phaseKeys){
 }
 
 // tooltip que muestra a qué fecha corresponde un punto al pasar el mouse o tocarlo (mobile).
-// container queda position:relative para poder posicionar el tooltip encima del punto tocado.
+// se cuelga directo de <body> con position:fixed (no del contenedor del gráfico) para que no lo
+// corte el overflow-x:auto de .chart-scroll cuando el punto está pegado al borde del panel; las
+// coordenadas que recibe show() son locales al SVG (1:1 en px, ver renderChart) y se convierten
+// a coordenadas de pantalla con getBoundingClientRect() del propio SVG.
 function setupTooltip(svg, container){
-  const tooltip = document.createElement('div');
-  tooltip.className = 'chart-tooltip';
-  container.style.position = 'relative';
-  container.appendChild(tooltip);
-  const show = (x, y, text) => {
+  const tooltipId = (container.id || 'chart') + '-tooltip';
+  let tooltip = document.getElementById(tooltipId);
+  if(!tooltip){
+    tooltip = document.createElement('div');
+    tooltip.id = tooltipId;
+    tooltip.className = 'chart-tooltip';
+    document.body.appendChild(tooltip);
+  }
+  const show = (localX, localY, text) => {
+    const rect = svg.getBoundingClientRect();
+    const x = rect.left + localX, y = rect.top + localY;
     tooltip.textContent = text;
     tooltip.style.left = x+'px';
     tooltip.style.top = y+'px';
+    tooltip.style.transform = 'translate(-50%,-135%)';
     tooltip.classList.add('visible');
+    // si se sale de la pantalla (puntos pegados al borde izq/der), lo corre para adentro
+    requestAnimationFrame(()=>{
+      const tr = tooltip.getBoundingClientRect();
+      let shiftX = 0;
+      if(tr.left < 4) shiftX = 4 - tr.left;
+      else if(tr.right > window.innerWidth - 4) shiftX = (window.innerWidth - 4) - tr.right;
+      if(shiftX !== 0) tooltip.style.transform = `translate(calc(-50% + ${shiftX}px),-135%)`;
+    });
   };
   const hide = () => tooltip.classList.remove('visible');
   svg.addEventListener('pointerdown', hide); // tocar/clickear afuera de un punto lo oculta
@@ -107,7 +144,8 @@ function addPointHitArea(svg, cx, cy, label, showTip, hideTip){
 
 export function renderChart(containerId, legendId, opts){
   opts = opts || {};
-  const container = document.getElementById(containerId || 'chart-container');
+  containerId = containerId || 'chart-container';
+  const container = document.getElementById(containerId);
   container.innerHTML = '';
   const legend = document.getElementById(legendId || 'chart-legend');
   legend.innerHTML = '';
@@ -120,7 +158,7 @@ export function renderChart(containerId, legendId, opts){
   if(activeTab === 'weekly'){
     const weeks = weeklyAverages(rangeCutoffISO(chartRange));
     if(weeks.length===0){ container.innerHTML = '<div class="empty-state">No hay datos en el período seleccionado.</div>'; return; }
-    const width = container.parentElement.clientWidth || 480;
+    const width = measuredWidth(containerId, container, 480);
     const innerW = width-padL-padR;
     const vals = weeks.map(w=>w.avg).concat(targetWeight != null ? [targetWeight] : []);
     const minV = Math.min(...vals), maxV = Math.max(...vals);
@@ -189,7 +227,7 @@ export function renderChart(containerId, legendId, opts){
     const daily = dailyWithMovingAvg();
     if(daily.length===0){ container.innerHTML = '<div class="empty-state">Todavía no hay datos suficientes.</div>'; return; }
     const spacing = opts.spacing || 20;
-    const width = Math.max((container.parentElement.clientWidth || 480), padL+padR+spacing*(daily.length-1)+20);
+    const width = Math.max(measuredWidth(containerId, container, 480), padL+padR+spacing*(daily.length-1)+20);
     const innerW = width-padL-padR;
     const vals = daily.map(d=>d.weight).concat(targetWeight != null ? [targetWeight] : []);
     const minV = Math.min(...vals), maxV = Math.max(...vals);
