@@ -77,6 +77,33 @@ export function weeklyAverages(sinceISO){
   });
 }
 
+// promedios de cada semana natural (lunes a domingo) que toca el mes visible del calendario de
+// peso, aunque esa semana empiece o termine en el mes vecino (el promedio se calcula con los
+// registros de la semana completa, no solo los del mes) -> [{ start, end, avg|null, count }]
+export function monthlyWeeklyAverages(viewMonth){
+  const year = viewMonth.getFullYear(), month = viewMonth.getMonth();
+  const lastOfMonth = new Date(year, month+1, 0);
+  const weeks = [];
+  let cursor = mondayOf(new Date(year, month, 1));
+  while(cursor <= lastOfMonth){
+    const weekStart = new Date(cursor);
+    const weekEnd = new Date(cursor); weekEnd.setDate(weekEnd.getDate()+6);
+    const weights = [];
+    for(let i=0; i<7; i++){
+      const d = new Date(weekStart); d.setDate(d.getDate()+i);
+      const e = entries[toISO(d)];
+      if(e) weights.push(e.weight);
+    }
+    weeks.push({
+      start: toISO(weekStart), end: toISO(weekEnd),
+      avg: weights.length ? weights.reduce((a,b)=>a+b,0)/weights.length : null,
+      count: weights.length,
+    });
+    cursor.setDate(cursor.getDate()+7);
+  }
+  return weeks;
+}
+
 export function dailyWithMovingAvg(){
   const dates = sortedDates();
   const out = [];

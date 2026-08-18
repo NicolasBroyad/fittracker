@@ -315,6 +315,10 @@ body{
 .exercise-cal-month-list .empty-state{ padding:10px 0; }
 .exercise-cal-month-item .act-date{ color:var(--accent); font-weight:700; }
 
+/* calendario de peso: debajo de la grilla, promedio de cada semana natural del mes visible */
+.weekly-avg-list{ margin-top:16px; padding-top:14px; border-top:1px solid var(--line); }
+.weekly-avg-item .act-date{ color:var(--accent); font-weight:700; }
+
 /* chart panel */
 .tabs{ display:flex; gap:6px; background:var(--paper-deep); padding:3px; border-radius:999px; }
 .tabs button{

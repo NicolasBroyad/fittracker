@@ -1,6 +1,6 @@
 import { entries, viewMonth, setCurrentGoal } from './state.js';
 import { MONTHS, DOW, fromISO, toISO, todayISO, fmtShort, escapeHtml, trendArrowSvg } from './utils.js';
-import { computeCurrent, computeTrend, computeStreak, computeMinMax, computeMonthlySummary, computeWeeklyAverage, sortedDates } from './derived.js';
+import { computeCurrent, computeTrend, computeStreak, computeMinMax, computeMonthlySummary, computeWeeklyAverage, sortedDates, monthlyWeeklyAverages } from './derived.js';
 import { renderChart } from './chart.js';
 import { openDayModal } from './modal.js';
 import { loadRecentActivity, loadCurrentGoal, loadGoalHistory } from './storage.js';
@@ -81,6 +81,17 @@ export function renderCalendar(){
   }
 
   document.getElementById('cal-next').disabled = (viewMonth.getFullYear()===new Date().getFullYear() && viewMonth.getMonth()===new Date().getMonth());
+  renderWeeklyAvgList();
+}
+
+export function renderWeeklyAvgList(){
+  const listEl = document.getElementById('weekly-avg-list');
+  if(!listEl) return;
+  const weeks = monthlyWeeklyAverages(viewMonth);
+  listEl.innerHTML = weeks.map(w => `<div class="activity-item weekly-avg-item">
+    <span class="act-date">${fmtShort(fromISO(w.start))} – ${fmtShort(fromISO(w.end))}</span>
+    <span class="act-detail">${w.avg != null ? w.avg.toFixed(2)+' kg' : 'Sin registros'}</span>
+  </div>`).join('');
 }
 
 export function renderNotes(){
