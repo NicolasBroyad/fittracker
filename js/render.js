@@ -88,6 +88,10 @@ export function renderWeeklyAvgList(){
   const listEl = document.getElementById('weekly-avg-list');
   if(!listEl) return;
   const weeks = monthlyWeeklyAverages(viewMonth);
+  if(weeks.length === 0){
+    listEl.innerHTML = '<div class="empty-state">Todavía no empezó ninguna semana de este mes.</div>';
+    return;
+  }
   listEl.innerHTML = weeks.map(w => `<div class="activity-item weekly-avg-item">
     <span class="act-date">${fmtShort(fromISO(w.start))} – ${fmtShort(fromISO(w.end))}</span>
     <span class="act-detail">${w.avg != null ? w.avg.toFixed(2)+' kg' : 'Sin registros'}</span>

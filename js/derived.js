@@ -1,5 +1,5 @@
 import { entries } from './state.js';
-import { toISO, fromISO, mondayOf } from './utils.js';
+import { toISO, fromISO, mondayOf, todayISO } from './utils.js';
 
 export function sortedDates(){
   return Object.keys(entries).sort();
@@ -80,12 +80,16 @@ export function weeklyAverages(sinceISO){
 // promedios de cada semana natural (lunes a domingo) que toca el mes visible del calendario de
 // peso, aunque esa semana empiece o termine en el mes vecino (el promedio se calcula con los
 // registros de la semana completa, no solo los del mes) -> [{ start, end, avg|null, count }]
+// las semanas que todavía no arrancaron (100% futuras) se omiten directamente, en vez de mostrar
+// "sin registros" para días que ni llegaron
 export function monthlyWeeklyAverages(viewMonth){
   const year = viewMonth.getFullYear(), month = viewMonth.getMonth();
   const lastOfMonth = new Date(year, month+1, 0);
+  const today = todayISO();
   const weeks = [];
   let cursor = mondayOf(new Date(year, month, 1));
   while(cursor <= lastOfMonth){
+    if(toISO(cursor) > today) break; // esta semana y las siguientes todavía no empezaron
     const weekStart = new Date(cursor);
     const weekEnd = new Date(cursor); weekEnd.setDate(weekEnd.getDate()+6);
     const weights = [];
