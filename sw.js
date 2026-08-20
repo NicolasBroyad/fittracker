@@ -1,4 +1,4 @@
-const CACHE_NAME = 'registro-peso-v25';
+const CACHE_NAME = 'fittracker-v1';
 const ASSETS = [
   '/',
   '/index.html',

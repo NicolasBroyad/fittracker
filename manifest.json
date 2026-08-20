@@ -1,6 +1,6 @@
 {
-  "name": "Registro de Peso",
-  "short_name": "Reg. Peso",
+  "name": "FitTracker",
+  "short_name": "FitTracker",
   "description": "Seguimiento diario de peso en ayunas",
   "start_url": "/",
   "scope": "/",

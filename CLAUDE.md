@@ -1,6 +1,6 @@
-# Registro de Peso — contexto del proyecto
+# FitTracker — contexto del proyecto
 
-App personal (uso de un solo usuario) para registrar el peso diario en ayunas. Nació como un prototipo de un chat web de Claude (un solo archivo HTML) y se fue evolucionando acá en la terminal hasta quedar como una mini-app con backend en la nube y deploy automático.
+App personal (uso de un solo usuario) para registrar el peso diario en ayunas y llevar la rutina de gimnasio. Nació como un prototipo de un chat web de Claude (un solo archivo HTML) llamado "Registro de Peso" y se fue evolucionando acá en la terminal hasta quedar como una mini-app con backend en la nube y deploy automático — el nombre pasó a **FitTracker** el 2026-08-20 cuando la app creció más allá de solo pesarse (rutina de gimnasio, fases de entrenamiento, PRs). Si en el historial de git o en capturas viejas aparece "Registro de Peso"/"registro-peso", es el nombre anterior del mismo proyecto.
 
 Este archivo existe para que una sesión nueva de Claude Code pueda retomar el trabajo sin tener que redescubrir todo el contexto. Léelo entero antes de tocar nada.
 
@@ -51,12 +51,12 @@ Desde un día puntual, el botón **"+ Ejercicio"** abre un buscador (`assign-mod
 - **Frontend**: HTML/CSS/JS vanilla, sin build step ni framework. Se eligió así porque es una app chica de un solo usuario y no vale la pena la complejidad de un bundler.
 - **Backend/datos**: Supabase (Postgres + Auth), plan gratuito. Antes vivía en `localStorage` del navegador, pero eso no sincroniza entre dispositivos ni sobrevive un cambio de navegador — se migró a Supabase para tener los datos disponibles desde cualquier lugar (celu, PC).
 - **Hosting**: Vercel, plan gratuito, deploy manual vía CLI (no hay integración automática de "push a main = deploy" configurada; ver sección Deploy).
-- **Repo**: GitHub, privado (`NicolasBroyad/registro-peso`).
+- **Repo**: GitHub, privado (`NicolasBroyad/fittracker`).
 
 ## Estructura de archivos
 
 ```
-registro-peso/
+fittracker/
 ├── index.html              # markup, sin lógica
 ├── manifest.json           # manifest de la PWA (nombre, íconos, colores, display:standalone)
 ├── sw.js                   # service worker: cache-first de los assets propios, passthrough para Supabase/CDN
@@ -87,7 +87,7 @@ registro-peso/
 │   ├── routines.js                      # lógica de la pantalla de Rutina: modales (día/ejercicio/sesión), delegación de eventos
 │   ├── screens.js                       # switch entre pantallas (Home/Peso/Rutina/Gimnasio) + carga perezosa de datos de rutina
 │   ├── home-render.js                   # pinta la pantalla Home (hoy destacado, módulos de peso/entreno, rachas) — solo render puro
-│   ├── gym-render.js                    # pinta la pantalla Gimnasio (racha, más mejorados, historial completo) — solo render puro
+│   ├── gym-render.js                    # pinta la pantalla Gimnasio (racha, volumen semanal, resumen mensual, PRs, historial) — solo render puro
 │   ├── swipe-nav.js                     # cambiar de pantalla arrastrando el dedo por cualquier parte de la página (Touch Events)
 │   └── main.js                          # wiring de todos los event listeners + arranque
 └── supabase/
@@ -99,7 +99,7 @@ registro-peso/
 Todo `js/*.js` son **ES modules** (`type="module"` en `index.html`). Esto importa: no se puede abrir `index.html` con `file://` directo porque los navegadores bloquean imports de módulos por CORS. Para probar local:
 
 ```bash
-cd /home/nicobroyad/repos/registro-peso
+cd /home/nicobroyad/repos/fittracker
 python3 -m http.server 8000
 # abrir http://localhost:8000/
 ```
@@ -108,12 +108,12 @@ python3 -m http.server 8000
 
 - `manifest.json` + `sw.js` + `icons/` hacen que el navegador ofrezca "Agregar a pantalla de inicio" (Android/Chrome muestra el prompt automático si el manifest y el service worker son válidos; iOS/Safari lo permite desde el menú Compartir igual, sin necesitar el service worker).
 - Los íconos (`icons/icon-192.png`, `icons/icon-512.png`, `icons/apple-touch-icon.png`, `icons/favicon-32.png`) se generaron a partir de una foto/diseño que compartió el usuario (`icons/app-logo.JPEG` guarda la fuente actual, sin usarse directo — es de referencia). Si el usuario manda un `.HEIC` (típico de iPhone), Pillow del sistema **no** lo puede abrir sin el plugin `pillow-heif`, que tampoco está instalado y el entorno es Debian "externally managed" (no se puede `pip install` directo al sistema) — hay que crear un venv (`python3 -m venv ...`, `pip install pillow pillow-heif`) y desde ahí `pillow_heif.register_heif_opener()` antes de `Image.open(...)`. Si la fuente ya viene con las esquinas redondeadas y fondo transparente (como si fuera un ícono ya recortado, ej. exportado de un editor de íconos), conviene aplanar el canal alfa sobre un color sólido igual al de relleno interior (ver un píxel interior, no la esquina) en vez de dejarlo transparente — así el cuadrado completo queda con un solo color de fondo y es el sistema (Android/iOS) el que aplica su propio recorte de esquinas, evitando un doble-redondeado feo. Redimensionar con Pillow (`Image.resize(..., Image.LANCZOS)`) a los 4 tamos necesarios. No hay ImageMagick/rsvg-convert instalado en este entorno; si en cambio hay que generar un ícono desde cero (sin foto de partida), el patrón viejo seguía funcionando: escribir un SVG en un HTML mínimo y `google-chrome --headless --screenshot=salida.png --window-size=WxH archivo.html`.
-- `sw.js` cachea (cache-first, con actualización en segundo plano) únicamente los archivos de mismo origen listados en `ASSETS` — si se agrega un archivo `.js` nuevo a `js/`, hay que sumarlo a esa lista y **subir el número de `CACHE_NAME`** (ej. `registro-peso-v2`) para que los navegadores con el service worker viejo lo reemplacen; si no, algunos usuarios pueden quedar viendo una versión cacheada vieja hasta que limpien el cache a mano.
+- `sw.js` cachea (cache-first, con actualización en segundo plano) únicamente los archivos de mismo origen listados en `ASSETS` — si se agrega un archivo `.js` nuevo a `js/`, hay que sumarlo a esa lista y **subir el número de `CACHE_NAME`** (ej. `fittracker-v2`) para que los navegadores con el service worker viejo lo reemplacen; si no, algunos usuarios pueden quedar viendo una versión cacheada vieja hasta que limpien el cache a mano.
 - Las llamadas a Supabase y al CDN de `supabase-js` (otro origen) pasan de largo por el service worker sin cachearse — nunca deberían quedar servidas desde caché.
 
 ## Supabase
 
-- **Proyecto**: `registro-peso`, ref `ogqbvooefjojaovxhhcx`, región `sa-east-1`.
+- **Proyecto**: `fittracker`, ref `ogqbvooefjojaovxhhcx`, región `sa-east-1`.
 - **Organización**: `Broyi Personal`, id `mtfgkmyeuxlhxsizsykj`.
 - **URL**: `https://ogqbvooefjojaovxhhcx.supabase.co` (hardcodeada en `js/config.js` junto con la `anon key` — ambas son seguras de exponer en el cliente, la seguridad real la da Row Level Security).
 - **Tablas** (todas con RLS activado, policies restringidas a `auth.uid() = user_id`, `user_id` con default `auth.uid()`):
@@ -160,7 +160,7 @@ supabase db push --password "<DB_PASSWORD>"
 **La contraseña de la base de datos** se generó al azar al crear el proyecto. Con autorización explícita del usuario (dada el 2026-08-14, repo nunca se hace público), el `SUPABASE_ACCESS_TOKEN` y la contraseña de DB quedaron guardados en `.supabase-credentials` en la raíz del repo, **gitignoreado** (no viaja a GitHub ni queda en el historial de git). Si el archivo existe, usarlo así en vez de pedirle las credenciales de nuevo al usuario:
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
-cd /home/nicobroyad/repos/registro-peso
+cd /home/nicobroyad/repos/fittracker
 set -a; source .supabase-credentials; set +a
 supabase db push --include-all
 ```
@@ -168,12 +168,13 @@ Si no existe o el token/contraseña dejaron de funcionar, hay que volver a pedí
 
 ## Vercel
 
-- **Proyecto**: `registro-peso`, bajo el team `nicolasbroyad-gmailcoms-projects`.
-- **URL de producción**: https://registro-peso-one.vercel.app (alias fijo; no cambia entre deploys).
+- **Proyecto**: `fittracker`, bajo el team `nicolasbroyad-gmailcoms-projects` (se llamaba `registro-peso` hasta el 2026-08-20, renombrado con `vercel project rename registro-peso fittracker` cuando cambió el nombre de la app).
+- **URL de producción**: https://fittracker-broyi.vercel.app (alias fijo; no cambia entre deploys). La URL vieja `registro-peso-one.vercel.app` se borró a propósito al renombrar (decisión explícita del usuario, no quedó como redirect) — cualquier PWA instalada con esa URL vieja dejó de funcionar y hubo que reinstalarla con la nueva.
+- **Gotcha real (2026-08-20): al renombrar el proyecto, Vercel le prendió "SSO Protection" de forma automática** (probablemente el default del team para proyectos nuevos/renombrados), lo que hacía que CUALQUIER visita a la URL de producción redirigiera a un login de Vercel (`vercel.com/sso-api?...`) antes de poder ver la app — rompía el acceso público aunque el deploy estuviera "Ready". Se detectó con `curl -I` a la URL (devolvía 302 a `vercel.com/sso-api`) y se sacó con `vercel project protection disable fittracker --sso`. Si en el futuro la app "desaparece" de golpe (funciona en `vercel inspect` pero no carga en el navegador), revisar esto primero con `vercel project protection` (sin argumentos, tira el estado actual de `ssoProtection`/`gitForkProtection`).
 - El repo de GitHub quedó conectado al proyecto de Vercel al hacer el primer `vercel --prod`, pero **no hay auto-deploy configurado on push** — cada cambio que se quiera publicar requiere correr el deploy manualmente:
   ```bash
   export PATH="$HOME/.nvm/versions/node/v22.19.0/bin:$PATH"   # o donde esté npm global en la sesión nueva
-  cd /home/nicobroyad/repos/registro-peso
+  cd /home/nicobroyad/repos/fittracker
   vercel --prod --yes
   ```
 - El CLI (`vercel`) se instaló con `npm install -g vercel`. El login (`vercel login`) es por navegador (device flow, como el de `gh`) — si la sesión perdió la autenticación, correr `vercel login`, mostrarle al usuario la URL con el código, y esperar confirmación antes de seguir.
@@ -181,7 +182,7 @@ Si no existe o el token/contraseña dejaron de funcionar, hay que volver a pedí
 
 ## GitHub
 
-- Repo: `https://github.com/NicolasBroyad/registro-peso`, **privado**, dueño `NicolasBroyad`.
+- Repo: `https://github.com/NicolasBroyad/fittracker`, **privado**, dueño `NicolasBroyad`.
 - Autenticación por SSH ya configurada en esta máquina (`git@github.com`), así que `git push`/`git pull` funcionan directo sin pedir credenciales.
 - `gh` (GitHub CLI) también está instalado en `~/.local/bin/gh` por si hace falta gestionar el repo, PRs, etc. Login vía `gh auth login --hostname github.com --git-protocol ssh --web` (device flow por navegador).
 - Flujo de trabajo normal: commitear con mensajes descriptivos (co-autoría `Claude Sonnet 5 <noreply@anthropic.com>`), pushear a `main` directo (no se usan ramas ni PRs en este proyecto, es de un solo desarrollador).
