@@ -153,8 +153,7 @@ export async function renderGym(){
   setGymSessionsByDate(sessionsByDate);
 
   container.innerHTML = streakCardHtml(streak)
-    + gymCalendarCardHtml(sessionsByDate)
-    + volumeCardHtml(logsByExercise)
+    + `<div class="panels">${gymCalendarCardHtml(sessionsByDate)}${volumeCardHtml(logsByExercise)}</div>`
     + monthlySummaryCardHtml(logsByExercise)
     + `<div class="panel">
         <div class="panel-head"><h2>Récords personales</h2></div>
