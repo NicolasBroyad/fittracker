@@ -66,6 +66,17 @@ export function setExerciseCalendarMonth(v){ exerciseCalendarMonth = v; }
 export let exerciseCalendarSessions = new Map();
 export function setExerciseCalendarSessions(v){ exerciseCalendarSessions = v; }
 
+// mes que se está viendo en el calendario de entrenamientos (pantalla de Gimnasio)
+export let gymCalMonth = new Date();
+gymCalMonth.setDate(1);
+gymCalMonth.setHours(0,0,0,0);
+export function setGymCalMonth(v){ gymCalMonth = v; }
+
+// Map fecha ISO -> [{exerciseId, exerciseName, sets}], todas las sesiones del catálogo agrupadas por
+// fecha (recalculado en cada renderGym), para poder mostrar el detalle de un día del calendario de arriba
+export let gymSessionsByDate = new Map();
+export function setGymSessionsByDate(v){ gymSessionsByDate = v; }
+
 // lunes de la semana que se está viendo en "Volumen semanal" (pantalla de Gimnasio)
 export let gymVolumeWeek = mondayOf(new Date());
 export function setGymVolumeWeek(v){ gymVolumeWeek = v; }

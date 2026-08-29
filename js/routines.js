@@ -11,6 +11,7 @@ import {
   exerciseCalendarSessions, setExerciseCalendarSessions,
   gymVolumeWeek, setGymVolumeWeek,
   gymSummaryMonth,
+  gymCalMonth, gymSessionsByDate,
 } from './routines-state.js';
 import {
   loadRoutineDays, loadExercisesWithDays, saveRoutineDay,
@@ -477,6 +478,29 @@ async function pickExerciseCalendarDay(iso){
   await openSessionModal(exerciseId, iso, dayOfWeek);
 }
 
+// ---------- Calendario de entrenamientos (pantalla de Gimnasio) ----------
+
+export async function gymCalPrevMonth(){
+  gymCalMonth.setMonth(gymCalMonth.getMonth()-1);
+  await renderGym();
+}
+export async function gymCalNextMonth(){
+  gymCalMonth.setMonth(gymCalMonth.getMonth()+1);
+  await renderGym();
+}
+export function openGymDayModal(iso){
+  const sessions = gymSessionsByDate.get(iso) || [];
+  document.getElementById('gym-day-modal-title').textContent = fmtShort(fromISO(iso));
+  document.getElementById('gym-day-modal-list').innerHTML = sessions.map(s => `<div class="activity-item gym-day-session-item" data-exercise-id="${s.exerciseId}" data-date="${iso}">
+    <span class="act-detail">${escapeHtml(s.exerciseName)}</span>
+    <span class="act-detail">${escapeHtml(formatSessionSets(s.sets))}</span>
+  </div>`).join('');
+  document.getElementById('gym-day-modal-overlay').classList.remove('hidden');
+}
+export function closeGymDayModal(){
+  document.getElementById('gym-day-modal-overlay').classList.add('hidden');
+}
+
 // ---------- Volumen semanal por grupo muscular (pantalla de Gimnasio) ----------
 
 export async function gymVolumeWeekPrev(){
@@ -579,4 +603,11 @@ export function wireRoutinesDelegation(){
   document.getElementById('exercise-cal-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='exercise-cal-modal-overlay') closeExerciseCalendar(); });
   document.getElementById('exercise-cal-prev').addEventListener('click', exerciseCalendarPrevMonth);
   document.getElementById('exercise-cal-next').addEventListener('click', exerciseCalendarNextMonth);
+
+  document.getElementById('gym-day-modal-close').addEventListener('click', closeGymDayModal);
+  document.getElementById('gym-day-modal-overlay').addEventListener('click', (e)=>{ if(e.target.id==='gym-day-modal-overlay') closeGymDayModal(); });
+  document.getElementById('gym-day-modal-list').addEventListener('click', (e)=>{
+    const item = e.target.closest('.gym-day-session-item');
+    if(item){ closeGymDayModal(); openSessionModal(item.dataset.exerciseId, item.dataset.date); }
+  });
 }

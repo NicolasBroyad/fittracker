@@ -216,6 +216,21 @@ export function computeWeeklyMuscleVolume(weekStartISO, weekEndISO, exercisesByI
   return totals;
 }
 
+// todas las sesiones de todos los ejercicios agrupadas por fecha, para el calendario de entrenamientos
+// exercises: lista de ejercicios únicos del catálogo (Object.values(exercisesById))
+// -> Map fecha ISO -> [{ exerciseId, exerciseName, sets }]
+export function computeSessionsByDate(exercises, logsByExercise){
+  const byDate = new Map();
+  exercises.forEach(ex => {
+    const logs = logsByExercise[ex.id] || [];
+    groupLogsBySession(logs).forEach(s => {
+      if(!byDate.has(s.date)) byDate.set(s.date, []);
+      byDate.get(s.date).push({ exerciseId: ex.id, exerciseName: ex.name, sets: s.sets });
+    });
+  });
+  return byDate;
+}
+
 // todas las sesiones de todos los ejercicios, más recientes primero
 // exercises: lista de ejercicios únicos del catálogo (Object.values(exercisesById))
 export function computeAllSessionsHistory(exercises, logsByExercise){

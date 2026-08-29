@@ -1,7 +1,7 @@
-import { routineDays, routineExercises, exercisesById, MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, gymVolumeWeek, gymSummaryMonth } from './routines-state.js';
+import { routineDays, routineExercises, exercisesById, MUSCLE_GROUPS, MUSCLE_GROUP_LABELS, gymVolumeWeek, gymSummaryMonth, gymCalMonth, setGymSessionsByDate } from './routines-state.js';
 import { loadAllLogsGroupedByExercise } from './routines-storage.js';
-import { computeGymStreak, computeAllSessionsHistory, computeWeeklyMuscleVolume, computeRecentPRs, computeGymMonthlySummary, formatSessionSets } from './routines-derived.js';
-import { fromISO, toISO, fmtShort, mondayOf, MONTHS, trendArrowSvg, escapeHtml } from './utils.js';
+import { computeGymStreak, computeAllSessionsHistory, computeWeeklyMuscleVolume, computeRecentPRs, computeGymMonthlySummary, computeSessionsByDate, formatSessionSets } from './routines-derived.js';
+import { fromISO, toISO, todayISO, fmtShort, mondayOf, MONTHS, DOW, trendArrowSvg, escapeHtml } from './utils.js';
 
 function streakCardHtml(count){
   let ticks = '';
@@ -23,6 +23,41 @@ function historyListHtml(rows){
     <span class="rw">${escapeHtml(r.exerciseName)}</span>
     <span class="rt">${escapeHtml(formatSessionSets(r.sets))}</span>
   </div>`).join('');
+}
+
+function gymCalendarCardHtml(sessionsByDate){
+  const month = gymCalMonth;
+  const label = MONTHS[month.getMonth()]+' '+month.getFullYear();
+  const dowRow = DOW.map(d => '<div class="cal-dow">'+d+'</div>').join('');
+  const first = new Date(month);
+  const offset = (first.getDay()+6)%7;
+  const daysInMonth = new Date(month.getFullYear(), month.getMonth()+1, 0).getDate();
+  const today = todayISO();
+
+  let cells = '';
+  for(let i=0; i<offset; i++) cells += '<div class="cal-day empty"></div>';
+  for(let day=1; day<=daysInMonth; day++){
+    const d = new Date(month.getFullYear(), month.getMonth(), day);
+    const iso = toISO(d);
+    const isFuture = iso > today;
+    const hasLog = sessionsByDate.has(iso);
+    const cls = 'cal-day'+(isFuture?' future':'')+(iso===today?' today':'')+(hasLog?' has-entry':' no-entry');
+    cells += `<div class="${cls}"${(!isFuture && hasLog) ? ` data-date="${iso}"` : ''}><span>${day}</span><span class="dot"></span></div>`;
+  }
+  const isCurrentMonth = month.getFullYear()===new Date().getFullYear() && month.getMonth()===new Date().getMonth();
+
+  return `<div class="panel">
+    <div class="panel-head">
+      <h2>Calendario de entrenamientos</h2>
+      <div class="cal-nav">
+        <button id="gym-cal-prev" title="Mes anterior">‹</button>
+        <div class="cal-month-label">${label}</div>
+        <button id="gym-cal-next" title="Mes siguiente" ${isCurrentMonth ? 'disabled' : ''}>›</button>
+      </div>
+    </div>
+    <div class="cal-grid">${dowRow}</div>
+    <div class="cal-grid" style="margin-top:4px;">${cells}</div>
+  </div>`;
 }
 
 function volumeRowHtml(group, sets, maxSets){
@@ -114,8 +149,11 @@ export async function renderGym(){
   const streak = computeGymStreak(routineDays, routineExercises, logsByExercise);
   const prs = computeRecentPRs(exercisesList, logsByExercise, 15);
   const history = computeAllSessionsHistory(exercisesList, logsByExercise);
+  const sessionsByDate = computeSessionsByDate(exercisesList, logsByExercise);
+  setGymSessionsByDate(sessionsByDate);
 
   container.innerHTML = streakCardHtml(streak)
+    + gymCalendarCardHtml(sessionsByDate)
     + volumeCardHtml(logsByExercise)
     + monthlySummaryCardHtml(logsByExercise)
     + `<div class="panel">
