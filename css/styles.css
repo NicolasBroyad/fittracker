@@ -639,6 +639,9 @@ body{
 .slot-carousel::-webkit-scrollbar{ display:none; }
 .slot-carousel > .exercise-row{ flex:0 0 100%; min-width:0; scroll-snap-align:center; box-sizing:border-box; }
 .slot-dots{ display:flex; justify-content:center; gap:5px; margin-top:4px; }
+.slot-dots{ align-items:center; }
+.slot-arrow{ background:none; border:0; color:var(--ink-soft); font-size:16px; line-height:1; padding:0 6px; cursor:pointer; }
+.slot-arrow:hover{ color:var(--accent); }
 .slot-dot{ width:6px; height:6px; border-radius:50%; background:var(--line); }
 .slot-dot.active{ background:var(--accent); }
 .routine-day-panel.is-today .slot-dot{ background:rgba(147,185,142,0.3); }

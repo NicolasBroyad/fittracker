@@ -53,7 +53,7 @@ function slotHtml(slot, position, logsByExercise, dayOfWeek){
   let content = rows;
   if(variantCount > 1){
     const dots = slot.items.map(() => '<span class="slot-dot"></span>').join('');
-    content = `<div class="slot-carousel">${rows}</div><div class="slot-dots">${dots}</div>`;
+    content = `<div class="slot-carousel">${rows}</div><div class="slot-dots"><button class="slot-arrow" data-dir="-1" title="Alternativa anterior">‹</button>${dots}<button class="slot-arrow" data-dir="1" title="Alternativa siguiente">›</button></div>`;
   }
   return `<div class="exercise-slot" data-order="${slot.orderIndex}" data-day="${dayOfWeek}">
     ${content}
@@ -167,6 +167,10 @@ function setupCarousels(container, logsByExercise){
     slotEl.dataset.idx = idx;
     car.scrollLeft = idx * car.clientWidth;
     setDots(slotEl, idx);
+    slotEl.querySelectorAll('.slot-arrow').forEach(btn => btn.addEventListener('click', e => {
+      e.stopPropagation();
+      car.scrollBy({ left: Number(btn.dataset.dir) * car.clientWidth, behavior: 'smooth' });
+    }));
     let t;
     car.addEventListener('scroll', () => {
       clearTimeout(t);
