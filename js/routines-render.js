@@ -50,8 +50,13 @@ function exerciseRowHtml(ex, label, logsByExercise, dayOfWeek){
 function slotHtml(slot, position, logsByExercise, dayOfWeek){
   const variantCount = slot.items.length;
   const rows = slot.items.map(ex => exerciseRowHtml(ex, slotLabel(position, ex.variant, variantCount), logsByExercise, dayOfWeek)).join('');
-  return `<div class="exercise-slot" data-order="${slot.orderIndex}">
-    ${rows}
+  let content = rows;
+  if(variantCount > 1){
+    const dots = slot.items.map(() => '<span class="slot-dot"></span>').join('');
+    content = `<div class="slot-carousel">${rows}</div><div class="slot-dots">${dots}</div>`;
+  }
+  return `<div class="exercise-slot" data-order="${slot.orderIndex}" data-day="${dayOfWeek}">
+    ${content}
     <button class="btn-add-alt" data-order="${slot.orderIndex}" data-day="${dayOfWeek}">+ Alternativa</button>
   </div>`;
 }
@@ -134,6 +139,56 @@ function exerciseCatalogPanelHtml(exercisesById, logsByExercise){
   </div>`;
 }
 
+// alternativa visible por slot (día-orden); si el usuario no swipeó, arranca en la última cargada cronológicamente
+const chosenVariant = new Map();
+
+function latestLoggedIndex(items, logsByExercise){
+  let best = 0, bestDate = '';
+  items.forEach((ex, i) => {
+    const latest = computeLatestSession(logsByExercise[ex.id] || []);
+    if(latest && latest.date > bestDate){ bestDate = latest.date; best = i; }
+  });
+  return best;
+}
+
+function setDots(slotEl, idx){
+  slotEl.querySelectorAll('.slot-dot').forEach((d, i) => d.classList.toggle('active', i === idx));
+}
+
+function setupCarousels(container, logsByExercise){
+  container.querySelectorAll('.exercise-slot').forEach(slotEl => {
+    const car = slotEl.querySelector('.slot-carousel');
+    if(!car) return;
+    const day = Number(slotEl.dataset.day), order = Number(slotEl.dataset.order);
+    const items = groupIntoSlots(routineExercises[day] || []).find(s => s.orderIndex === order).items;
+    const key = day+'-'+order;
+    let idx = chosenVariant.has(key) ? chosenVariant.get(key) : latestLoggedIndex(items, logsByExercise);
+    if(idx >= items.length) idx = 0;
+    slotEl.dataset.idx = idx;
+    car.scrollLeft = idx * car.clientWidth;
+    setDots(slotEl, idx);
+    let t;
+    car.addEventListener('scroll', () => {
+      clearTimeout(t);
+      t = setTimeout(() => {
+        const i = Math.round(car.scrollLeft / (car.clientWidth || 1));
+        chosenVariant.set(key, i);
+        setDots(slotEl, i);
+      }, 80);
+    }, { passive: true });
+  });
+}
+
+export function rerenderCarousels(){
+  document.querySelectorAll('#routine-days-container .exercise-slot').forEach(slotEl => {
+    const car = slotEl.querySelector('.slot-carousel');
+    if(!car || !car.clientWidth) return;
+    const key = slotEl.dataset.day+'-'+slotEl.dataset.order;
+    const i = chosenVariant.has(key) ? chosenVariant.get(key) : Number(slotEl.dataset.idx);
+    if(i != null) car.scrollLeft = i * car.clientWidth;
+  });
+}
+
 export async function renderRoutines(){
   const container = document.getElementById('routine-days-container');
   const catalogContainer = document.getElementById('exercise-catalog-container');
@@ -143,5 +198,6 @@ export async function renderRoutines(){
   let html = '';
   for(let d=1; d<=7; d++) html += dayPanelHtml(d, logsByExercise, todayDow);
   container.innerHTML = html;
+  setupCarousels(container, logsByExercise);
   if(catalogContainer) catalogContainer.innerHTML = exerciseCatalogPanelHtml(exercisesById, logsByExercise);
 }

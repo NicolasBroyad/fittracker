@@ -85,7 +85,7 @@ function onTouchStart(e){
   if(e.touches.length !== 1) return;
   if(isJiggling()) return;
   if(document.querySelector('.modal-overlay:not(.hidden)')) return;
-  if(e.target.closest && e.target.closest('.chart-scroll, input, textarea, select, [contenteditable="true"]')) return;
+  if(e.target.closest && e.target.closest('.chart-scroll, .slot-carousel, input, textarea, select, [contenteditable="true"]')) return;
 
   const startX = e.touches[0].clientX;
   const startY = e.touches[0].clientY;

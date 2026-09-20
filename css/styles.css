@@ -633,7 +633,16 @@ body{
 
 .exercise-row{ padding:10px 8px; border-radius:8px; cursor:pointer; }
 .exercise-row:hover{ background:var(--paper-deep); }
-.exercise-row + .exercise-row{ margin-top:8px; }
+.slot-carousel{
+  display:flex; overflow-x:auto; scroll-snap-type:x mandatory; scrollbar-width:none; touch-action:pan-x pan-y;
+}
+.slot-carousel::-webkit-scrollbar{ display:none; }
+.slot-carousel > .exercise-row{ flex:0 0 100%; min-width:0; scroll-snap-align:center; box-sizing:border-box; }
+.slot-dots{ display:flex; justify-content:center; gap:5px; margin-top:4px; }
+.slot-dot{ width:6px; height:6px; border-radius:50%; background:var(--line); }
+.slot-dot.active{ background:var(--accent); }
+.routine-day-panel.is-today .slot-dot{ background:rgba(147,185,142,0.3); }
+.routine-day-panel.is-today .slot-dot.active{ background:var(--lcd-accent); }
 .ex-main{ display:flex; align-items:center; gap:10px; }
 .ex-number{ font-family:'JetBrains Mono', monospace; font-size:0.85rem; font-weight:700; color:var(--brass); flex:0 0 auto; }
 .ex-name{ font-size:1rem; font-weight:700; color:var(--ink); flex:1; min-width:0; }

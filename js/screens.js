@@ -1,6 +1,7 @@
 import { loadRoutines, updateTodayScrollHint } from './routines.js';
 import { renderHome } from './home-render.js';
 import { renderGym } from './gym-render.js';
+import { rerenderCarousels } from './routines-render.js';
 import { rerenderIfOpen } from './chart-modal.js';
 
 export const SCREEN_ORDER = ['home', 'peso', 'rutina', 'gimnasio'];
@@ -33,6 +34,7 @@ export async function switchScreen(screen){
     await renderHome();
   } else if(screen === 'rutina'){
     await ensureRoutinesLoaded();
+    rerenderCarousels(); // al renderizar oculta, el carrusel midió ancho 0
   } else if(screen === 'gimnasio'){
     await ensureRoutinesLoaded();
     await renderGym();
