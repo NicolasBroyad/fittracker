@@ -15,6 +15,7 @@ import { RoutinesScreen } from '@/features/training/RoutinesScreen';
 import { RoutineEditorScreen } from '@/features/training/RoutineEditorScreen';
 import { ExercisesScreen } from '@/features/training/ExercisesScreen';
 import { SetLoggerSheet } from '@/features/training/SetLoggerSheet';
+import { ExerciseCalendarSheet } from '@/features/training/ExerciseCalendarSheet';
 import { DaySessionsSheet } from '@/features/progress/DaySessionsSheet';
 import { AuthProvider, useAuth } from './auth';
 import { matchPath, navigate, useLocation } from './router';
@@ -135,6 +136,7 @@ function Shell() {
       <WeightSheet />
       <SetLoggerSheet />
       <DaySessionsSheet />
+      <ExerciseCalendarSheet />
       <SettingsSheet />
     </>
   );

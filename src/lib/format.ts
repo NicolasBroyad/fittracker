@@ -70,7 +70,7 @@ function weightText(w: number | null): string {
 
 /**
  * Resume una sesión agrupando series consecutivas con el mismo peso:
- * [85×6, 80×8, 80×7] → "85 kg × 6 · 80 kg × 8, 7". "PC" = peso corporal.
+ * [85×6, 80×8, 80×7] → "85 kg × 6 · 80 kg × 8-7". "PC" = peso corporal.
  */
 export function fmtSets(sets: SetInput[]): string {
   const groups: { w: number | null; reps: (number | null)[] }[] = [];
@@ -79,7 +79,7 @@ export function fmtSets(sets: SetInput[]): string {
     if (last && last.w === s.weight) last.reps.push(s.reps);
     else groups.push({ w: s.weight, reps: [s.reps] });
   }
-  return groups.map((g) => `${weightText(g.w)} × ${g.reps.map((r) => (r == null ? '–' : r)).join(', ')}`).join(' · ');
+  return groups.map((g) => `${weightText(g.w)} × ${g.reps.map((r) => (r == null ? '–' : r)).join('-')}`).join(' · ');
 }
 
 /** Una serie suelta: "80 kg × 8" */

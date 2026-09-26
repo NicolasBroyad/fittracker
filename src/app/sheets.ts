@@ -14,11 +14,12 @@ export interface SheetsState {
     target: { sets: number | null; reps: string | null } | null;
   } | null;
   day: { id: number; date: ISODate } | null;
+  exCal: { id: number; exerciseId: string } | null;
   settings: boolean;
 }
 
 let seq = 0;
-let state: SheetsState = { weight: null, sets: null, day: null, settings: false };
+let state: SheetsState = { weight: null, sets: null, day: null, exCal: null, settings: false };
 const listeners = new Set<() => void>();
 
 function set(patch: Partial<SheetsState>) {
@@ -34,6 +35,8 @@ export const sheets = {
   closeSets: () => set({ sets: null }),
   openDay: (date: ISODate) => set({ day: { id: ++seq, date } }),
   closeDay: () => set({ day: null }),
+  openExCal: (exerciseId: string) => set({ exCal: { id: ++seq, exerciseId } }),
+  closeExCal: () => set({ exCal: null }),
   openSettings: () => set({ settings: true }),
   closeSettings: () => set({ settings: false }),
 };

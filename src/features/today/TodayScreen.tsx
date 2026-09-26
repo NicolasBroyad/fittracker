@@ -7,7 +7,17 @@ import { sheets } from '@/app/sheets';
 import { DAY_NAMES } from '@/lib/constants';
 import { addDays, dayOfWeek, fmtLong, fmtRelative, mondayOf, todayISO } from '@/lib/dates';
 import { fmtNum } from '@/lib/format';
-import { dayPlan, defaultAlternative, isTrainingDay, planMuscles, slotDoneOn, slotLabel, weekStreak } from '@/lib/training';
+import {
+  assignWeek,
+  dayPlan,
+  defaultAlternative,
+  isTrainingDay,
+  pendingDays,
+  planMuscles,
+  slotDoneOn,
+  slotLabel,
+  weekStreak,
+} from '@/lib/training';
 import { activeGoal, avgEndingAt, currentPhase, goalProgress, loggingStreak, weeklyAverages } from '@/lib/weight';
 import { Button, IconButton } from '@/ui/button';
 import { cn } from '@/ui/cn';
@@ -123,9 +133,24 @@ function WorkoutTodayCard({ today }: { today: string }) {
     );
   }
 
-  const plan = dayPlan(data, active.id, dow, exById);
+  const assignment = assignWeek(data, active.id, exById, index, mondayOf(today), today);
+  const doneToday = assignment.dayOnDate.get(today) ?? null;
+  const ownDoneOn = assignment.doneOn.get(dow) ?? null;
+  const pending = doneToday ? [] : pendingDays(assignment, today);
+  // lo que se muestra hoy: lo que ya empezaste hoy (aunque sea de otro día), o lo que toca hoy si
+  // todavía no lo hiciste antes
+  const shownDow = doneToday ?? (ownDoneOn ? null : dow);
+  const plan = dayPlan(data, active.id, shownDow ?? dow, exById);
 
-  if (!isTrainingDay(plan)) {
+  const banner =
+    pending.length > 0 ? (
+      <PendingBanner
+        days={pending.map((d) => ({ dow: d, name: dayPlan(data, active.id, d, exById).name }))}
+        todayPlanName={isTrainingDay(plan) && shownDow ? plan.name || DAY_NAMES[dow - 1] : null}
+      />
+    ) : null;
+
+  if (shownDow == null || !isTrainingDay(plan)) {
     // próximo día con entrenamiento
     let next: { dow: number; name: string } | null = null;
     for (let i = 1; i <= 7; i++) {
@@ -137,23 +162,32 @@ function WorkoutTodayCard({ today }: { today: string }) {
       }
     }
     return (
-      <Card>
-        <div className="flex items-center gap-4">
-          <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-muted">
-            <BedDouble className="size-6" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-medium text-muted">{active.name}</div>
-            <div className="text-[18px] font-semibold">{plan.isRest ? 'Hoy es día de descanso' : 'Hoy no hay entrenamiento'}</div>
-            {next && (
-              <div className="text-[13px] text-muted">
-                Próximo: {DAY_NAMES[next.dow - 1]}
-                {next.name && ` · ${next.name}`}
+      <>
+        {banner}
+        <Card>
+          <div className="flex items-center gap-4">
+            <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-surface-2 text-muted">
+              {ownDoneOn ? <Check className="size-6 text-accent-ink" strokeWidth={3} /> : <BedDouble className="size-6" />}
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-medium text-muted">{active.name}</div>
+              <div className="text-[18px] font-semibold">
+                {ownDoneOn
+                  ? `${plan.name || 'El entrenamiento de hoy'} ya lo hiciste el ${DAY_NAMES[dayOfWeek(ownDoneOn) - 1].toLowerCase()}`
+                  : plan.isRest
+                    ? 'Hoy es día de descanso'
+                    : 'Hoy no hay entrenamiento'}
               </div>
-            )}
+              {next && (
+                <div className="text-[13px] text-muted">
+                  Próximo: {DAY_NAMES[next.dow - 1]}
+                  {next.name && ` · ${next.name}`}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
-      </Card>
+        </Card>
+      </>
     );
   }
 
@@ -162,57 +196,90 @@ function WorkoutTodayCard({ today }: { today: string }) {
   const complete = done === total;
 
   return (
-    <div className="overflow-hidden rounded-[24px] border border-line bg-surface shadow-card">
-      <div className="relative overflow-hidden bg-[radial-gradient(120%_120%_at_100%_0%,var(--accent-soft),transparent_60%)] p-4">
-        <div className="flex items-start gap-4">
-          <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-medium text-muted">Entrenamiento de hoy · {active.name}</div>
-            <div className="mt-0.5 truncate text-[26px] leading-tight font-bold tracking-tight">
-              {plan.name || DAY_NAMES[dow - 1]}
+    <>
+      {banner}
+      <div className="overflow-hidden rounded-[24px] border border-line bg-surface shadow-card">
+        <div className="relative overflow-hidden bg-[radial-gradient(120%_120%_at_100%_0%,var(--accent-soft),transparent_60%)] p-4">
+          <div className="flex items-start gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="text-[13px] font-medium text-muted">
+                Entrenamiento de hoy · {shownDow !== dow ? `el del ${DAY_NAMES[shownDow - 1].toLowerCase()}` : active.name}
+              </div>
+              <div className="mt-0.5 truncate text-[26px] leading-tight font-bold tracking-tight">
+                {plan.name || DAY_NAMES[shownDow - 1]}
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {planMuscles(plan.slots).map((m) => (
+                  <MuscleBadge key={m} group={m} className="bg-surface-2" />
+                ))}
+              </div>
             </div>
-            <div className="mt-2 flex flex-wrap gap-1">
-              {planMuscles(plan.slots).map((m) => (
-                <MuscleBadge key={m} group={m} className="bg-surface-2" />
-              ))}
-            </div>
+            <ProgressRing value={done / total} size={60} stroke={6}>
+              {complete ? (
+                <Check className="size-6 text-accent-ink" strokeWidth={3} />
+              ) : (
+                <span className="text-[14px] font-bold tnum">
+                  {done}/{total}
+                </span>
+              )}
+            </ProgressRing>
           </div>
-          <ProgressRing value={done / total} size={60} stroke={6}>
-            {complete ? (
-              <Check className="size-6 text-accent-ink" strokeWidth={3} />
-            ) : (
-              <span className="text-[14px] font-bold tnum">
-                {done}/{total}
-              </span>
-            )}
-          </ProgressRing>
+        </div>
+        <div className="px-4 pb-1">
+          {plan.slots.map((slot, i) => {
+            const alt = defaultAlternative(slot, index);
+            const item = slot.items[alt];
+            const isDone = slotDoneOn(slot, index, today);
+            return (
+              <button
+                key={slot.orderIndex}
+                onClick={() => sheets.openSets(item.exercise_id, { target: { sets: item.sets_target, reps: item.reps_target } })}
+                className={cn('flex w-full items-center gap-3 py-2.5 text-left', i > 0 && 'border-t border-line')}
+              >
+                <SlotNumber label={slotLabel(i + 1, alt, slot.items.length)} done={isDone} className="size-8 text-[13px]" />
+                <span className={cn('min-w-0 flex-1 truncate text-[15px]', isDone ? 'text-muted' : 'font-medium')}>
+                  {item.exercise.name}
+                  {slot.items.length > 1 && <span className="text-faint"> · +{slot.items.length - 1} alt.</span>}
+                </span>
+                <ChevronRight className="size-4 shrink-0 text-faint" />
+              </button>
+            );
+          })}
+        </div>
+        <div className="p-4 pt-2">
+          <Button
+            block
+            size="lg"
+            variant={complete ? 'secondary' : 'primary'}
+            onClick={() => navigate(shownDow === dow ? '/entreno' : `/entreno?dia=${shownDow}`)}
+          >
+            {complete ? '¡Entrenamiento completo! Ver detalle' : done ? 'Seguir entrenando' : 'Empezar entrenamiento'}
+          </Button>
         </div>
       </div>
-      <div className="px-4 pb-1">
-        {plan.slots.map((slot, i) => {
-          const alt = defaultAlternative(slot, index);
-          const item = slot.items[alt];
-          const isDone = slotDoneOn(slot, index, today);
-          return (
-            <button
-              key={slot.orderIndex}
-              onClick={() => sheets.openSets(item.exercise_id, { target: { sets: item.sets_target, reps: item.reps_target } })}
-              className={cn('flex w-full items-center gap-3 py-2.5 text-left', i > 0 && 'border-t border-line')}
-            >
-              <SlotNumber label={slotLabel(i + 1, alt, slot.items.length)} done={isDone} className="size-8 text-[13px]" />
-              <span className={cn('min-w-0 flex-1 truncate text-[15px]', isDone ? 'text-muted' : 'font-medium')}>
-                {item.exercise.name}
-                {slot.items.length > 1 && <span className="text-faint"> · +{slot.items.length - 1} alt.</span>}
-              </span>
-              <ChevronRight className="size-4 shrink-0 text-faint" />
-            </button>
-          );
-        })}
+    </>
+  );
+}
+
+/** Días de la rutina que quedaron sin hacer esta semana: se pueden hacer hoy y quedan como hechos. */
+function PendingBanner({ days, todayPlanName }: { days: { dow: number; name: string }[]; todayPlanName: string | null }) {
+  const first = days[0];
+  const label = (d: { dow: number; name: string }) =>
+    d.name ? `${d.name} (${DAY_NAMES[d.dow - 1].toLowerCase()})` : DAY_NAMES[d.dow - 1];
+  return (
+    <div className="flex items-center gap-3 rounded-[20px] border border-warn/30 bg-warn/10 p-3.5">
+      <div className="min-w-0 flex-1">
+        <div className="text-[14.5px] font-semibold">
+          {days.length === 1 ? 'Te quedó pendiente' : `Te quedaron ${days.length} pendientes`}
+        </div>
+        <div className="text-[13px] text-muted">
+          {days.map(label).join(', ')}
+          {todayPlanName && ` · lo de hoy (${todayPlanName}) se corre`}
+        </div>
       </div>
-      <div className="p-4 pt-2">
-        <Button block size="lg" variant={complete ? 'secondary' : 'primary'} onClick={() => navigate('/entreno')}>
-          {complete ? '¡Entrenamiento completo! Ver detalle' : done ? 'Seguir entrenando' : 'Empezar entrenamiento'}
-        </Button>
-      </div>
+      <Button size="sm" onClick={() => navigate(`/entreno?dia=${first.dow}`)}>
+        Hacerlo hoy
+      </Button>
     </div>
   );
 }

@@ -1,16 +1,17 @@
 import { useMemo, useState } from 'react';
-import { BedDouble, Check, ChevronDown, Library, Pencil, Plus } from 'lucide-react';
+import { ArrowUpDown, BedDouble, Check, ChevronDown, Library, Pencil, Plus } from 'lucide-react';
 import { useTrainingIndex } from '@/api/hooks';
 import { Page } from '@/app/Page';
 import { navigate, useSearchParam } from '@/app/router';
-import { DAY_LETTER, DAY_NAMES } from '@/lib/constants';
-import { addDays, dayOfWeek, fromISO, mondayOf, todayISO } from '@/lib/dates';
-import { dayPlan, isTrainingDay, planMuscles, slotDoneOn } from '@/lib/training';
+import { DAY_ABBR, DAY_LETTER, DAY_NAMES } from '@/lib/constants';
+import { addDays, dayOfWeek, fmtLong, fromISO, mondayOf, todayISO } from '@/lib/dates';
+import { assignWeek, dayPlan, isTrainingDay, planMuscles, slotDoneOn } from '@/lib/training';
 import { Button, IconButton } from '@/ui/button';
 import { cn } from '@/ui/cn';
 import { Card, Empty, MuscleBadge, ProgressRing, Skeleton } from '@/ui/display';
 import { MigrationNotice, useRoutineData } from './common';
 import { NewRoutineSheet, RoutineSwitcherSheet } from './RoutineSheets';
+import { ReorderSlots } from './ReorderSlots';
 import { SlotCard } from './SlotCard';
 
 export function TrainingScreen() {
@@ -24,6 +25,13 @@ export function TrainingScreen() {
   const selectedDate = addDays(monday, selected - 1);
   const [switcher, setSwitcher] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [reordering, setReordering] = useState(false);
+
+  // qué día de la rutina se hizo en cada fecha (aunque se haya corrido de día)
+  const assignment = useMemo(
+    () => assignWeek(data, active?.id, exById, index, monday, today),
+    [data, active?.id, exById, index, monday, today],
+  );
 
   const week = useMemo(
     () =>
@@ -32,14 +40,22 @@ export function TrainingScreen() {
         const date = addDays(monday, i);
         const plan = dayPlan(data, active?.id, dow, exById);
         const trained = !!index.byDate.get(date)?.length;
-        return { dow, date, plan, trained };
+        return { dow, date, plan, trained, doneOn: assignment.doneOn.get(dow) ?? null };
       }),
-    [data, active?.id, exById, index, monday],
+    [data, active?.id, exById, index, monday, assignment],
   );
 
   const plan = week[selected - 1].plan;
-  const doneCount = plan.slots.filter((s) => slotDoneOn(s, index, selectedDate)).length;
-  const selectDay = (dow: number) => navigate(dow === todayDow ? '/entreno' : `/entreno?dia=${dow}`, { replace: true });
+  const doneOn = week[selected - 1].doneOn;
+  // contra qué fecha se marca "hecho": la fecha en que realmente se hizo ese día de la rutina, si se hizo
+  const statusDate = doneOn ?? (selectedDate <= today ? selectedDate : today);
+  const doneCount = plan.slots.filter((s) => slotDoneOn(s, index, statusDate)).length;
+  const otherDayOnDate = assignment.dayOnDate.get(selectedDate);
+  const pending = isTrainingDay(plan) && !doneOn && selectedDate < today;
+  const selectDay = (dow: number) => {
+    setReordering(false);
+    navigate(dow === todayDow ? '/entreno' : `/entreno?dia=${dow}`, { replace: true });
+  };
 
   const actions = active ? (
     <>
@@ -108,7 +124,7 @@ export function TrainingScreen() {
               </div>
             )}
           </div>
-          {isTrainingDay(plan) && selectedDate <= today && (
+          {isTrainingDay(plan) && (selectedDate <= today || doneOn) && (
             <ProgressRing value={doneCount / plan.slots.length} size={54} stroke={5}>
               {doneCount === plan.slots.length ? (
                 <Check className="size-5 text-accent-ink" strokeWidth={3} />
@@ -120,6 +136,25 @@ export function TrainingScreen() {
             </ProgressRing>
           )}
         </div>
+
+        {(doneOn && doneOn !== selectedDate) || pending || (otherDayOnDate && otherDayOnDate !== selected) ? (
+          <div className="-mt-1 space-y-1 px-1 text-[13px]">
+            {doneOn && doneOn !== selectedDate && (
+              <p className="font-medium text-accent-ink">Lo hiciste el {fmtLong(doneOn).toLowerCase()}</p>
+            )}
+            {pending && (
+              <p className="text-muted">
+                <span className="font-semibold text-bad">Pendiente.</span> Si lo hacés hoy, cargalo desde acá y queda como hecho.
+              </p>
+            )}
+            {otherDayOnDate && otherDayOnDate !== selected && (
+              <p className="text-muted">
+                Ese día hiciste {week[otherDayOnDate - 1].plan.name || 'el entrenamiento'}, el del{' '}
+                {DAY_NAMES[otherDayOnDate - 1].toLowerCase()}.
+              </p>
+            )}
+          </div>
+        ) : null}
 
         {plan.isRest ? (
           <Card>
@@ -140,16 +175,41 @@ export function TrainingScreen() {
           </Card>
         ) : (
           <div className="space-y-3">
-            {plan.slots.map((slot, i) => (
-              <SlotCard
-                key={`${active.id}-${selected}-${slot.orderIndex}`}
-                slotKey={`${active.id}-${selected}-${slot.orderIndex}`}
-                slot={slot}
-                position={i + 1}
-                index={index}
-                statusDate={selectedDate <= today ? selectedDate : today}
+            {plan.slots.length > 1 && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setReordering((v) => !v)}
+                  className={cn(
+                    'inline-flex h-8 items-center gap-1.5 rounded-full px-3 text-[13px] font-semibold',
+                    reordering ? 'bg-accent text-on-accent' : 'bg-surface-2 text-muted active:bg-surface-3',
+                  )}
+                >
+                  {reordering ? <Check className="size-4" strokeWidth={2.5} /> : <ArrowUpDown className="size-4" />}
+                  {reordering ? 'Listo' : 'Ordenar'}
+                </button>
+              </div>
+            )}
+            {reordering ? (
+              <ReorderSlots
+                key={`${active.id}-${selected}`}
+                routineId={active.id}
+                dayOfWeek={selected}
+                dayName={plan.day?.name ?? ''}
+                isRest={plan.isRest}
+                slots={plan.slots}
               />
-            ))}
+            ) : (
+              plan.slots.map((slot, i) => (
+                <SlotCard
+                  key={`${active.id}-${selected}-${slot.orderIndex}`}
+                  slotKey={`${active.id}-${selected}-${slot.orderIndex}`}
+                  slot={slot}
+                  position={i + 1}
+                  index={index}
+                  statusDate={statusDate}
+                />
+              ))
+            )}
           </div>
         )}
       </div>
@@ -185,7 +245,7 @@ function WeekStrip({
   today,
   onSelect,
 }: {
-  week: { dow: number; date: string; plan: ReturnType<typeof dayPlan>; trained: boolean }[];
+  week: { dow: number; date: string; plan: ReturnType<typeof dayPlan>; trained: boolean; doneOn: string | null }[];
   selected: number;
   today: string;
   onSelect: (dow: number) => void;
@@ -210,8 +270,15 @@ function WeekStrip({
               {DAY_LETTER[d.dow - 1]}
             </span>
             <span className="text-[17px] leading-none font-bold tnum">{fromISO(d.date).getDate()}</span>
-            <span className="flex h-1.5 items-center">
-              {d.trained ? (
+            <span className="flex h-2.5 items-center">
+              {training && d.doneOn && d.doneOn !== d.date ? (
+                // hecho otro día: se muestra cuándo
+                <span className={cn('text-[9px] leading-none font-bold', isSel ? 'text-bg' : 'text-accent-ink')}>
+                  {DAY_ABBR[dayOfWeek(d.doneOn) - 1].toLowerCase()}
+                </span>
+              ) : training && d.doneOn ? (
+                <span className={cn('size-1.5 rounded-full', isSel ? 'bg-bg' : 'bg-accent-ink')} />
+              ) : !training && d.trained ? (
                 <span className={cn('size-1.5 rounded-full', isSel ? 'bg-bg' : 'bg-accent-ink')} />
               ) : d.plan.isRest ? (
                 <span className={cn('h-[2px] w-2 rounded-full', isSel ? 'bg-bg/40' : 'bg-surface-3')} />

@@ -2,7 +2,7 @@
  * Backend falso en memoria con datos de ejemplo realistas. Solo se carga en desarrollo con `?demo`
  * (import dinámico en src/api/index.ts), para poder recorrer y probar la UI sin tocar la base real.
  */
-import { addDays, dayOfWeek, todayISO } from '@/lib/dates';
+import { addDays, dayOfWeek, mondayOf, todayISO } from '@/lib/dates';
 import type {
   Exercise,
   MuscleGroup,
@@ -181,10 +181,13 @@ function seed(): Store {
   const slotChoice = new Map<string, number>();
   for (let i = 98; i >= 0; i--) {
     const date = addDays(today, -i);
-    const dow = dayOfWeek(date);
+    // esta semana: el martes no se entrenó y todo se corrió un día (Pull el miércoles, Piernas el jueves)
+    const shifted = date >= mondayOf(today) && dayOfWeek(date) >= 2 && dayOfWeek(date) <= 4;
+    const dow = shifted ? dayOfWeek(date) - 1 : dayOfWeek(date);
+    if (shifted && dow === 1) continue;
     const day = days.find((d) => d.routine_id === ppl.id && d.day_of_week === dow);
     if (!day || day.is_rest) continue;
-    if (i > 0 && r() < 0.08) continue; // alguna sesión salteada
+    if (i > 0 && !shifted && r() < 0.08) continue; // alguna sesión salteada
     const dayItems = items.filter((it) => it.routine_id === ppl.id && it.day_of_week === dow);
     const slots = [...new Set(dayItems.map((it) => it.order_index))].sort((a, b) => a - b);
     const limit = i === 0 ? 2 : slots.length; // hoy: entrenamiento a medias

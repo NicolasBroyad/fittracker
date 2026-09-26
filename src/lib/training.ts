@@ -1,4 +1,4 @@
-import { addDays, mondayOf, todayISO } from './dates';
+import { addDays, dayOfWeek, mondayOf, todayISO } from './dates';
 import type { Exercise, ISODate, MuscleGroup, PlanDay, PlanItem, Routine, RoutineData, SetInput, SetLog } from './types';
 
 // ── Sesiones ───────────────────────────────────────────────────────────────
@@ -393,4 +393,60 @@ export function exerciseUsage(data: RoutineData | undefined, exerciseId: string)
 export function lastKnownTarget(data: RoutineData | undefined, exerciseId: string): { sets: number | null; reps: string | null } {
   const u = exerciseUsage(data, exerciseId).find((x) => x.item.sets_target || x.item.reps_target);
   return { sets: u?.item.sets_target ?? null, reps: u?.item.reps_target ?? null };
+}
+
+// ── Semana real vs. planificada ────────────────────────────────────────────
+
+export interface WeekAssignment {
+  /** día de la rutina (1..7) → fecha en que se hizo esta semana */
+  doneOn: Map<number, ISODate>;
+  /** fecha → día de la rutina que se hizo esa fecha */
+  dayOnDate: Map<ISODate, number>;
+  /** días de la rutina con entrenamiento planificado */
+  planned: number[];
+}
+
+/**
+ * Deduce qué día de la rutina se hizo en cada fecha de la semana, comparando los ejercicios
+ * cargados cada día contra los puestos de cada día planificado (cualquier alternativa cuenta).
+ * Así, si Pull se hizo el miércoles en vez del martes, el martes figura como hecho "el miércoles".
+ * Asignación greedy por mayor coincidencia; a igualdad, gana el día de la semana que corresponde a
+ * esa fecha y después el más cercano.
+ */
+export function assignWeek(
+  data: RoutineData | undefined,
+  routineId: string | null | undefined,
+  exById: Map<string, Exercise>,
+  index: TrainingIndex,
+  monday: ISODate,
+  today: ISODate,
+): WeekAssignment {
+  const plans = Array.from({ length: 7 }, (_, i) => dayPlan(data, routineId, i + 1, exById)).filter(isTrainingDay);
+  const candidates: { date: ISODate; dow: number; matched: number; ratio: number; dist: number }[] = [];
+  for (let i = 0; i < 7; i++) {
+    const date = addDays(monday, i);
+    if (date > today) break;
+    const logged = new Set((index.byDate.get(date) ?? []).map((s) => s.exerciseId));
+    if (!logged.size) continue;
+    for (const p of plans) {
+      const matched = p.slots.filter((sl) => sl.items.some((it) => logged.has(it.exercise_id))).length;
+      if (matched === 0 || matched < Math.ceil(p.slots.length * 0.3)) continue;
+      candidates.push({ date, dow: p.dayOfWeek, matched, ratio: matched / p.slots.length, dist: Math.abs(i + 1 - p.dayOfWeek) });
+    }
+  }
+  candidates.sort((a, b) => b.matched - a.matched || b.ratio - a.ratio || a.dist - b.dist);
+  const doneOn = new Map<number, ISODate>();
+  const dayOnDate = new Map<ISODate, number>();
+  for (const c of candidates) {
+    if (doneOn.has(c.dow) || dayOnDate.has(c.date)) continue;
+    doneOn.set(c.dow, c.date);
+    dayOnDate.set(c.date, c.dow);
+  }
+  return { doneOn, dayOnDate, planned: plans.map((p) => p.dayOfWeek) };
+}
+
+/** Días planificados de la semana que ya pasaron y todavía no se hicieron (ni antes ni después). */
+export function pendingDays(w: WeekAssignment, today: ISODate): number[] {
+  const todayDow = dayOfWeek(today);
+  return w.planned.filter((d) => d < todayDow && !w.doneOn.has(d));
 }

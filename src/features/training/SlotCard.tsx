@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react';
 import { sheets } from '@/app/sheets';
 import { MUSCLE_LABEL } from '@/lib/constants';
 import { fmtRelative } from '@/lib/dates';
@@ -142,13 +142,28 @@ function Pane({ item, label, index, statusDate }: { item: SlotItem; label: strin
   const target = fmtTarget(item.sets_target, item.reps_target);
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
       onClick={() => sheets.openSets(item.exercise_id, { target: { sets: item.sets_target, reps: item.reps_target } })}
-      className="flex w-full gap-3.5 p-4 text-left active:bg-surface-2"
+      onKeyDown={(e) => e.key === 'Enter' && e.currentTarget.click()}
+      className="flex w-full cursor-pointer gap-3.5 p-4 text-left active:bg-surface-2"
     >
       <SlotNumber label={label} done={!!today} />
       <div className="min-w-0 flex-1">
-        <div className="text-[16px] leading-snug font-semibold">{item.exercise.name}</div>
+        <div className="flex items-start gap-2">
+          <div className="min-w-0 flex-1 text-[16px] leading-snug font-semibold">{item.exercise.name}</div>
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              sheets.openExCal(item.exercise_id);
+            }}
+            aria-label={`Calendario de ${item.exercise.name}`}
+            className="-mt-1.5 -mr-1.5 flex size-8 shrink-0 items-center justify-center rounded-full text-muted active:bg-surface-3"
+          >
+            <CalendarDays className="size-[17px]" />
+          </button>
+        </div>
         <div className="mt-0.5 flex flex-wrap items-center gap-x-2 text-[13px] text-muted">
           {target && <span className="font-semibold text-fg tnum">{target}</span>}
           {item.exercise.muscle_group && <span>{MUSCLE_LABEL[item.exercise.muscle_group]}</span>}
@@ -171,7 +186,7 @@ function Pane({ item, label, index, statusDate }: { item: SlotItem; label: strin
           )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 

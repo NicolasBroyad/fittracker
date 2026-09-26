@@ -1,4 +1,6 @@
 import { useMemo, useState } from 'react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   Area,
   CartesianGrid,
@@ -15,6 +17,7 @@ import { useCssColors } from '@/app/theme';
 import { PHASE_META, PHASES } from '@/lib/constants';
 import {
   addDays,
+  addMonths,
   diffDays,
   fmtDate,
   fmtDayMonth,
@@ -31,6 +34,7 @@ import { movingAverage, rangeStart, weeklyAverages, type ChartRange } from '@/li
 import { cn } from '@/ui/cn';
 import { Segmented } from '@/ui/controls';
 import { Delta } from '@/ui/display';
+import { IconButton } from '@/ui/button';
 
 type Mode = 'diario' | 'semanal';
 
@@ -52,6 +56,8 @@ const RANGES: { value: ChartRange; label: string }[] = [
 ];
 
 const ts = (iso: string) => fromISO(iso).getTime();
+
+const RANGE_MONTHS: Record<Exclude<ChartRange, 'ALL'>, number> = { '1M': 1, '3M': 3, '6M': 6, '1A': 12 };
 
 function readPrefs(): { mode: Mode; range: ChartRange; phases: boolean; goal: boolean } {
   try {
@@ -96,24 +102,29 @@ export function WeightChart({ entries, phases, goal }: { entries: WeightEntry[];
   const phaseColor: Record<PhaseKind, string> = { volumen: c.vol, definicion: c.def, mantenimiento: c.man };
   const today = todayISO();
 
+  // cuántos períodos hacia atrás se está mirando (0 = el período que termina hoy)
+  const [offset, setOffset] = useState(0);
+  const end = prefs.range === 'ALL' ? today : addMonths(today, -RANGE_MONTHS[prefs.range] * offset);
+  const canPrev = prefs.range !== 'ALL' && entries.length > 0 && entries[0].date < rangeStart(prefs.range, entries, end);
+
   const model = useMemo(() => {
     if (!entries.length) return null;
-    const from = rangeStart(prefs.range, entries, today);
+    const from = rangeStart(prefs.range, entries, end);
     const ma = movingAverage(entries);
     let points: Point[];
     if (prefs.mode === 'diario') {
       points = entries
-        .filter((e) => e.date >= from)
+        .filter((e) => e.date >= from && e.date <= end)
         .map((e) => ({ x: ts(e.date), date: e.date, weight: e.weight, ma: ma.get(e.date) }));
     } else {
       const fromMonday = mondayOf(from);
       points = weeklyAverages(entries)
-        .filter((w) => w.key >= fromMonday)
+        .filter((w) => w.key >= fromMonday && w.key <= end)
         .map((w) => ({ x: ts(w.key), date: w.key, avg: w.avg, count: w.count }));
     }
     if (!points.length) return null;
     const first = points[0].date;
-    const last = prefs.mode === 'diario' ? today : points[points.length - 1].date;
+    const last = prefs.mode === 'diario' ? end : points[points.length - 1].date;
     const minX = Math.min(ts(first), ts(from));
     const maxX = Math.max(ts(last), points[points.length - 1].x);
 
@@ -137,6 +148,7 @@ export function WeightChart({ entries, phases, goal }: { entries: WeightEntry[];
     const lastVal = prefs.mode === 'diario' ? points[points.length - 1].ma : points[points.length - 1].avg;
 
     return {
+      from,
       points,
       minX,
       maxX,
@@ -147,7 +159,7 @@ export function WeightChart({ entries, phases, goal }: { entries: WeightEntry[];
       ticks: niceTicks(toISO(new Date(minX)), toISO(new Date(maxX))),
       change: firstVal != null && lastVal != null && points.length > 1 ? lastVal - firstVal : null,
     };
-  }, [entries, phases, goal, prefs, today]);
+  }, [entries, phases, goal, prefs, today, end]);
 
   const presentPhases = model ? PHASES.filter((p) => model.bands.some((b) => b.phase === p.value)) : [];
   const spanDays = model ? Math.round((model.maxX - model.minX) / 86_400_000) : 0;
@@ -169,18 +181,47 @@ export function WeightChart({ entries, phases, goal }: { entries: WeightEntry[];
           <Toggle on={prefs.phases} onClick={() => setPrefs({ phases: !prefs.phases })}>
             Fases
           </Toggle>
-          <Toggle on={prefs.goal} onClick={() => setPrefs({ goal: !prefs.goal })}>
+          <Toggle
+            on={prefs.goal && goal?.target_weight != null}
+            onClick={() =>
+              goal?.target_weight != null
+                ? setPrefs({ goal: !prefs.goal })
+                : toast('Todavía no tenés una meta de peso', { description: 'Definila en la tarjeta Objetivo, más abajo.' })
+            }
+          >
             Meta
           </Toggle>
         </div>
       </div>
 
-      {model?.change != null && (
-        <div className="mt-3 flex items-baseline gap-1.5 text-[13px] text-muted">
-          <Delta value={model.change} unit="kg" className="text-[15px]" />
-          <span>en el período</span>
+      <div className="mt-3 flex min-h-8 items-center justify-between gap-2">
+        <div className="flex items-baseline gap-1.5 text-[13px] text-muted">
+          {model?.change != null && (
+            <>
+              <Delta value={model.change} unit="kg" className="text-[15px]" />
+              <span>en el período</span>
+            </>
+          )}
         </div>
-      )}
+        {prefs.range !== 'ALL' && (
+          <div className="flex items-center gap-1">
+            <IconButton label="Período anterior" size="sm" disabled={!canPrev} onClick={() => setOffset((o) => o + 1)}>
+              <ChevronLeft className="size-4" />
+            </IconButton>
+            <span className="min-w-[92px] text-center text-[12px] font-medium text-muted tnum">
+              {model ? `${fmtDayMonth(model.from)} – ${offset === 0 ? 'hoy' : fmtDayMonth(end)}` : ''}
+            </span>
+            <IconButton
+              label="Período siguiente"
+              size="sm"
+              disabled={offset === 0}
+              onClick={() => setOffset((o) => Math.max(0, o - 1))}
+            >
+              <ChevronRight className="size-4" />
+            </IconButton>
+          </div>
+        )}
+      </div>
 
       <div className="-mx-1 mt-2 h-[220px]">
         {model ? (
@@ -229,21 +270,6 @@ export function WeightChart({ entries, phases, goal }: { entries: WeightEntry[];
                 axisLine={false}
                 width={32}
               />
-              {model.target != null && (
-                <ReferenceLine
-                  y={model.target}
-                  stroke={c.fg}
-                  strokeOpacity={0.55}
-                  strokeDasharray="5 5"
-                  ifOverflow="extendDomain"
-                  label={{
-                    value: `Meta ${fmtNum(model.target, 1)}`,
-                    position: 'insideTopRight',
-                    fill: c.muted,
-                    fontSize: 11,
-                  }}
-                />
-              )}
               <Tooltip
                 cursor={{ stroke: c.faint, strokeWidth: 1 }}
                 isAnimationActive={false}
@@ -285,6 +311,21 @@ export function WeightChart({ entries, phases, goal }: { entries: WeightEntry[];
                   isAnimationActive={false}
                 />
               )}
+              {model.target != null && (
+                <ReferenceLine
+                  y={model.target}
+                  stroke={c.fg}
+                  strokeOpacity={0.8}
+                  strokeDasharray="5 5"
+                  ifOverflow="extendDomain"
+                  label={{
+                    value: `Meta ${fmtNum(model.target, 1)}`,
+                    position: 'insideTopRight',
+                    fill: c.muted,
+                    fontSize: 11,
+                  }}
+                />
+              )}
             </ComposedChart>
           </ResponsiveContainer>
         ) : (
@@ -296,7 +337,10 @@ export function WeightChart({ entries, phases, goal }: { entries: WeightEntry[];
         {RANGES.map((r) => (
           <button
             key={r.value}
-            onClick={() => setPrefs({ range: r.value })}
+            onClick={() => {
+              setOffset(0);
+              setPrefs({ range: r.value });
+            }}
             className={cn(
               'h-8 rounded-[11px] text-[13px] font-semibold transition-colors',
               prefs.range === r.value ? 'bg-surface text-fg shadow-[0_1px_3px_rgba(0,0,0,0.12)] dark:bg-surface-3' : 'text-muted',
@@ -328,7 +372,7 @@ function Toggle({ on, onClick, children }: { on: boolean; onClick: () => void; c
       aria-pressed={on}
       className={cn(
         'h-8 rounded-full border px-3 text-[12.5px] font-semibold transition-colors',
-        on ? 'border-transparent bg-accent-soft text-accent-ink' : 'border-line-strong text-muted',
+        on ? 'border-transparent bg-accent text-on-accent' : 'border-line-strong text-muted',
       )}
     >
       {children}
