@@ -98,7 +98,7 @@ npm run format       # prettier (+ orden de clases de Tailwind)
 ## Diseño / gotchas de UI
 
 - Mobile-first pensado para PWA en iPhone (pantalla de inicio). `viewport-fit=cover` + paddings con `env(safe-area-inset-*)`; barra de estado `black-translucent` (texto blanco): en tema claro se pinta una franja oscura detrás de la barra de estado para que se lea.
-- Color de acento celeste/azul (`--accent`, `--accent-ink` en `src/index.css`; antes era lima y se cambió a pedido). Tema oscuro por defecto; claro/sistema desde Ajustes (`localStorage` `ft-theme`, aplicado por un script inline en `index.html` antes del primer paint).
+- Color de acento verde jade/esmeralda (`--accent`, `--accent-ink` en `src/index.css`). Historial a pedido del usuario: empezó lima (#C8F750, no le gustó), pasó a celeste/azul y volvió a verde pero no lima. Los íconos de `public/` usan el mismo color. Tema oscuro por defecto; claro/sistema desde Ajustes (`localStorage` `ft-theme`, aplicado por un script inline en `index.html` antes del primer paint).
 - Recharts no entiende `var(--x)` en props: los colores salen de `useCssColors()` (lee las variables CSS reales según el tema).
 - Inputs con `font-size` ≥ 16px (si no, iOS hace zoom al enfocar). Números decimales con `inputMode="decimal"` en inputs de texto (acepta coma o punto; nunca `type="number"`). Formato de números `es-AR` (coma decimal).
 - **Teclado en iOS dentro de hojas**: `repositionInputs` de Vaul está apagado porque en iOS empujaba la hoja fuera de la pantalla al abrir el teclado (bug real reportado al renombrar una rutina). En su lugar `useKeyboard` en `src/ui/sheet.tsx` mide `visualViewport` y apoya la hoja justo encima del teclado limitando su altura.
