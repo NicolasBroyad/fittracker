@@ -34,6 +34,23 @@ Cuatro pestañas (barra flotante abajo, estilo iOS) + pantallas secundarias:
 - **Color de las variaciones**: siempre verde si sube y rojo si baja, sin importar la fase ni la meta (pedido del usuario; antes dependía de la fase y se sacó). `Delta` con `neutral` queda gris. Fases en el gráfico: volumen verde, definición rojo, mantenimiento violeta.
 - **Mejor registro de un ejercicio** ("Mejor" en cada puesto, en la hoja de series y en el detalle): es la **sesión completa** donde se hizo la mejor serie (más peso, a igual peso más reps; si empatan, se comparan las demás series de mejor a peor y luego gana la más reciente) — `bestSession` en `src/lib/training.ts`. No se muestra una serie suelta.
 
+### Modo sin conexión
+
+En el gimnasio suele no haber señal. Las acciones del día a día (**cargar/borrar series, cargar/borrar peso, guardar un día de rutina/ordenar**) funcionan sin conexión: se aplican al instante (optimista), quedan en una cola con un único carril (`scope: 'offline'`, se suben en orden) y se reintentan solas. Todo en `src/api/hooks.ts` (`offlineKeys`/`offlineFns`/`offlineOptions`, `setMutationDefaults` para que las mutaciones restauradas tengan su `mutationFn`) y `src/api/connectivity.ts`.
+
+- `navigator.onLine` miente con señal mala, así que cuando un pedido falla por red (`BackendError.network`, detectado en `fail()` de `live.ts`) se marca la app offline (`onlineManager.setOnline(false)`) y se sondea `/auth/v1/health` cada 10 s hasta que responda.
+- La cola se persiste en `localStorage` junto con el caché (incluye las pendientes a mitad de subir): si se cierra la app sin señal, al reabrirla `resumeRestored` las continúa.
+- **Gotcha**: TanStack solo reanuda mutaciones pausadas con la app en primer plano (`focusManager`). Si la señal vuelve con el celu bloqueado, nada las reanudaba al volver a abrir la app; por eso `createQueryClient` también sincroniza al recuperar el foco.
+- Mientras hay cambios en cola no se refrescan datos del servidor al volver a la app (pisarían lo optimista); al terminar de subir, se invalida todo.
+- Crear ejercicios, rutinas, metas o fases **requiere conexión** (`networkMode: 'always'`): sin señal fallan enseguida con aviso, porque dependen de ids que genera el servidor.
+- Sin conexión y con el token vencido, `getSession()` devuelve null: `live.ts` usa el usuario de la sesión guardada para no mandar al login.
+- Indicador flotante sobre la barra de pestañas (`OfflineIndicator.tsx`): "Sin conexión · N cambios guardados en el celu" / "Subiendo N cambios…".
+- En modo demo se simula sin señal con `localStorage.setItem('demo-offline', '1')`.
+
+## Backups
+
+Repo privado aparte `NicolasBroyad/fittracker-backups`: un workflow de GitHub Actions corre todos los días a las 04:00 (ART), hace `pg_dump` del esquema `public` + CSV por tabla + id/email del usuario, y commitea (un commit por día aunque no haya cambios, así GitHub no desactiva el cron). La conexión diaria además evita que Supabase pause el proyecto por inactividad. Necesita el secret `SUPABASE_DB_URL` (connection string del *Session pooler*). Instrucciones de restauración en su README.
+
 ## Stack y por qué
 
 - **Vite + React 19 + TypeScript 7 + Tailwind CSS 4**. SPA estática (no hace falta SSR: todo es privado detrás de login y los datos vienen de Supabase desde el cliente), build rápido y deploy estático en Vercel.

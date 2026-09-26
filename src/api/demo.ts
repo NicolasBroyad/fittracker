@@ -15,7 +15,7 @@ import type {
   WeightEntry,
   WeightGoal,
 } from '@/lib/types';
-import type { Api, AuthUser } from './types';
+import { BackendError, type Api, type AuthUser } from './types';
 
 function rng(seed: number) {
   return () => {
@@ -220,7 +220,25 @@ function seed(): Store {
 
 const wait = <T>(v: T, ms = 120) => new Promise<T>((res) => setTimeout(() => res(structuredClone(v)), ms));
 
+/** En demo se puede simular que no hay señal: localStorage 'demo-offline' = '1'. */
+export const demoOffline = () => localStorage.getItem('demo-offline') === '1';
+
 export function createDemoApi(): Api {
+  const api = createDemoApiInner();
+  // cualquier llamada (salvo la sesión) falla como sin red mientras se simula estar offline
+  return new Proxy(api, {
+    get(target, prop, receiver) {
+      const v = Reflect.get(target, prop, receiver);
+      if (typeof v !== 'function' || ['getUser', 'onAuthChange', 'signIn', 'signOut'].includes(String(prop))) return v;
+      return (...args: unknown[]) =>
+        demoOffline()
+          ? Promise.reject(new BackendError('Sin conexión', 'network'))
+          : (v as (...a: unknown[]) => unknown).apply(target, args);
+    },
+  });
+}
+
+function createDemoApiInner(): Api {
   const db = seed();
   let user: AuthUser | null = { id: 'demo-user', email: 'demo@fittracker.app' };
   const listeners = new Set<(u: AuthUser | null) => void>();

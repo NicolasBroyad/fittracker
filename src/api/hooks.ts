@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { focusManager, onlineManager, QueryClient, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { buildIndex } from '@/lib/training';
 import { sortEntries } from '@/lib/weight';
@@ -18,6 +18,7 @@ import type {
   WeightEntry,
   WeightGoal,
 } from '@/lib/types';
+import { isNetworkError, reportNetworkFailure } from './connectivity';
 import { api, BackendError } from './index';
 
 export const qk = {
@@ -29,20 +30,116 @@ export const qk = {
   logs: ['logs'] as const,
 };
 
+// ── Sin conexión ───────────────────────────────────────────────────────────
+//
+// Las acciones del día a día (series, peso, orden de la rutina) funcionan sin señal: se aplican al
+// instante en pantalla, quedan en cola (persistida en el celular, sobrevive a cerrar la app) y se
+// suben solas y en orden cuando vuelve la conexión. El resto de las acciones (crear ejercicios,
+// rutinas, metas…) necesitan conexión y fallan enseguida con un aviso.
+
+export interface SaveWeightVars {
+  date: ISODate;
+  weight: number;
+  note: string;
+  previous: WeightEntry | null;
+}
+export interface ReplaceSetsVars {
+  exerciseId: string;
+  date: ISODate;
+  sets: SetInput[];
+}
+const offlineKeys = {
+  saveWeight: ['offline', 'saveWeight'],
+  deleteWeight: ['offline', 'deleteWeight'],
+  replaceSets: ['offline', 'replaceSets'],
+  saveRoutineDay: ['offline', 'saveRoutineDay'],
+} as const;
+
+// las mismas funciones las usan los hooks y las mutaciones restauradas después de reabrir la app
+const offlineFns = {
+  saveWeight: (v: SaveWeightVars) => api().saveWeightEntry({ date: v.date, weight: v.weight, note: v.note }, v.previous),
+  deleteWeight: (entry: WeightEntry) => api().deleteWeightEntry(entry),
+  replaceSets: (v: ReplaceSetsVars) => api().replaceSessionSets(v.exerciseId, v.date, v.sets),
+  saveRoutineDay: (v: SaveDayVars) =>
+    api().saveRoutineDay(v.routineId, v.dayOfWeek, { name: v.name, is_rest: v.isRest }, v.items),
+};
+
+const offlineOptions = {
+  networkMode: 'online' as const,
+  // un solo carril: se suben en el orden en que se hicieron
+  scope: { id: 'offline' },
+  retry: (count: number, err: unknown) => {
+    if (isNetworkError(err)) {
+      reportNetworkFailure();
+      return true;
+    }
+    return count < 1;
+  },
+  retryDelay: (n: number) => Math.min(1000 * 2 ** n, 30_000),
+};
+
 export function createQueryClient() {
-  return new QueryClient({
+  const qc: QueryClient = new QueryClient({
     defaultOptions: {
       queries: {
         staleTime: 60_000,
         gcTime: 1000 * 60 * 60 * 24 * 30,
-        retry: (count, err) => !(err instanceof BackendError && err.missingSchema) && count < 2,
-        refetchOnWindowFocus: true,
+        retry: (count, err) => {
+          if (isNetworkError(err)) {
+            reportNetworkFailure();
+            return true;
+          }
+          return !(err instanceof BackendError && err.missingSchema) && count < 2;
+        },
+        // con cambios en cola no se refresca: los datos del servidor todavía no los tienen
+        refetchOnWindowFocus: () => qc.isMutating() === 0,
+        refetchOnReconnect: false,
       },
+      mutations: { networkMode: 'always' },
     },
   });
+  qc.setMutationDefaults(offlineKeys.saveWeight, { ...offlineOptions, mutationFn: offlineFns.saveWeight });
+  qc.setMutationDefaults(offlineKeys.deleteWeight, { ...offlineOptions, mutationFn: offlineFns.deleteWeight });
+  qc.setMutationDefaults(offlineKeys.replaceSets, { ...offlineOptions, mutationFn: offlineFns.replaceSets });
+  qc.setMutationDefaults(offlineKeys.saveRoutineDay, { ...offlineOptions, mutationFn: offlineFns.saveRoutineDay });
+  // al volver la conexión: primero se sube la cola, después se trae lo último del servidor
+  onlineManager.subscribe((online) => {
+    if (online) void syncAfterReconnect(qc);
+  });
+  // la cola solo avanza con la app en primer plano: si la señal volvió con el celu bloqueado o la
+  // app en segundo plano, se sube al volver a abrirla
+  focusManager.subscribe((focused) => {
+    if (
+      focused &&
+      onlineManager.isOnline() &&
+      qc
+        .getMutationCache()
+        .getAll()
+        .some((m) => m.state.isPaused)
+    ) {
+      void syncAfterReconnect(qc);
+    }
+  });
+  return qc;
+}
+
+/** Al reabrir la app: continúa (en orden) todo lo que quedó pendiente de la sesión anterior. */
+export async function resumeRestored(qc: QueryClient) {
+  const pending = qc
+    .getMutationCache()
+    .getAll()
+    .filter((m) => m.state.status === 'pending');
+  for (const m of pending) await m.continue().catch(() => undefined);
+  if (pending.length) await qc.invalidateQueries();
+}
+
+export async function syncAfterReconnect(qc: QueryClient) {
+  await qc.resumePausedMutations();
+  await qc.invalidateQueries();
 }
 
 function errorMessage(e: unknown): string {
+  if (isNetworkError(e)) return 'Sin conexión: esto necesita internet';
   if (e instanceof BackendError && e.missingSchema) return 'Falta aplicar la migración de la 2.0 en Supabase';
   if (e instanceof Error) return e.message;
   return 'Algo salió mal';
@@ -93,8 +190,9 @@ export function useTrainingIndex() {
 export function useSaveWeight() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { date: ISODate; weight: number; note: string; previous: WeightEntry | null }) =>
-      api().saveWeightEntry({ date: v.date, weight: v.weight, note: v.note }, v.previous),
+    mutationKey: offlineKeys.saveWeight,
+    ...offlineOptions,
+    mutationFn: offlineFns.saveWeight,
     onMutate: async (v) => {
       await qc.cancelQueries({ queryKey: qk.entries });
       const prev = qc.getQueryData<WeightEntry[]>(qk.entries);
@@ -116,7 +214,9 @@ export function useSaveWeight() {
 export function useDeleteWeight() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (entry: WeightEntry) => api().deleteWeightEntry(entry),
+    mutationKey: offlineKeys.deleteWeight,
+    ...offlineOptions,
+    mutationFn: offlineFns.deleteWeight,
     onMutate: async (entry) => {
       await qc.cancelQueries({ queryKey: qk.entries });
       const prev = qc.getQueryData<WeightEntry[]>(qk.entries);
@@ -235,10 +335,11 @@ export function useDeleteExercise() {
 function useRoutineMutation<V>(
   mutationFn: (v: V) => Promise<unknown>,
   optimistic: (old: RoutineData, v: V) => RoutineData,
-  opts: { invalidate?: boolean } = {},
+  opts: { invalidate?: boolean; offline?: keyof typeof offlineKeys } = {},
 ) {
   const qc = useQueryClient();
   return useMutation({
+    ...(opts.offline ? { mutationKey: offlineKeys[opts.offline], ...offlineOptions } : {}),
     mutationFn,
     onMutate: async (v: V) => {
       await qc.cancelQueries({ queryKey: qk.routines });
@@ -300,7 +401,7 @@ export interface SaveDayVars {
 
 export function useSaveRoutineDay() {
   return useRoutineMutation(
-    (v: SaveDayVars) => api().saveRoutineDay(v.routineId, v.dayOfWeek, { name: v.name, is_rest: v.isRest }, v.items),
+    offlineFns.saveRoutineDay,
     (old, v) => {
       const same = (x: { routine_id: string; day_of_week: number }) =>
         x.routine_id === v.routineId && x.day_of_week === v.dayOfWeek;
@@ -314,6 +415,7 @@ export function useSaveRoutineDay() {
           .concat(v.items.map((i) => ({ ...i, routine_id: v.routineId, day_of_week: v.dayOfWeek }))),
       };
     },
+    { offline: 'saveRoutineDay' },
   );
 }
 
@@ -322,8 +424,9 @@ export function useSaveRoutineDay() {
 export function useReplaceSets() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { exerciseId: string; date: ISODate; sets: SetInput[] }) =>
-      api().replaceSessionSets(v.exerciseId, v.date, v.sets),
+    mutationKey: offlineKeys.replaceSets,
+    ...offlineOptions,
+    mutationFn: offlineFns.replaceSets,
     onMutate: async (v) => {
       await qc.cancelQueries({ queryKey: qk.logs });
       const prev = qc.getQueryData<SetLog[]>(qk.logs);

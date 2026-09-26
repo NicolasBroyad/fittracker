@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { ChevronRight, Plus, RotateCcw, Trophy, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { offlineNote } from '@/api/connectivity';
 import { useExerciseMap, useReplaceSets, useRoutinesQuery, useTrainingIndex } from '@/api/hooks';
 import { useSticky } from '@/app/hooks';
 import { navigate } from '@/app/router';
@@ -170,7 +171,7 @@ function SetForm({ exercise, initialDate, target }: { exercise: Exercise; initia
       });
     } else {
       toast.success('Series guardadas', {
-        description: `${exercise.name} · ${sets.length} ${sets.length === 1 ? 'serie' : 'series'}`,
+        description: offlineNote() ?? `${exercise.name} · ${sets.length} ${sets.length === 1 ? 'serie' : 'series'}`,
       });
     }
   }

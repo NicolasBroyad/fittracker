@@ -1,6 +1,7 @@
 import { useRef, useState, type MouseEvent, type PointerEvent } from 'react';
 import { Minus, Plus } from 'lucide-react';
 import { toast } from 'sonner';
+import { offlineNote } from '@/api/connectivity';
 import { useDeleteWeight, useEntries, useSaveWeight } from '@/api/hooks';
 import { useSticky } from '@/app/hooks';
 import { sheets, useSheets } from '@/app/sheets';
@@ -105,7 +106,7 @@ function WeightForm({ initialDate }: { initialDate: ISODate }) {
     save.mutate({ date, weight: Math.round(parsed * 100) / 100, note: note.trim(), previous: existing });
     sheets.closeWeight();
     toast.success(existing ? 'Registro actualizado' : 'Peso registrado', {
-      description: `${fmtNum(parsed, 1)} kg · ${fmtLong(date)}`,
+      description: offlineNote() ?? `${fmtNum(parsed, 1)} kg · ${fmtLong(date)}`,
     });
   }
 

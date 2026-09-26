@@ -3,8 +3,8 @@ import type { Exercise, Phase, PlanDay, PlanItem, Routine, SetLog, WeightEntry, 
 import { BackendError, type Api, type AuthUser } from './types';
 
 // URL y anon key son públicas por diseño: la seguridad real la da Row Level Security.
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? 'https://ogqbvooefjojaovxhhcx.supabase.co';
-const SUPABASE_ANON_KEY =
+export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? 'https://ogqbvooefjojaovxhhcx.supabase.co';
+export const SUPABASE_ANON_KEY =
   import.meta.env.VITE_SUPABASE_ANON_KEY ??
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9ncWJ2b29lZmpvamFvdnhoaGN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY2NDczMjIsImV4cCI6MjEwMjIyMzMyMn0.5oMxu9TW87uMqUFVFe00r1M_wfs-brja4OJ0Ynf3R_Q';
 
@@ -14,8 +14,28 @@ const sb = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 
 const PAGE = 1000; // max-rows por defecto de PostgREST en Supabase
 
+const NETWORK_RE =
+  /failed to fetch|load failed|networkerror|network request failed|fetch failed|the internet connection appears to be offline|err_internet/i;
+
+/** supabase-js no tira excepción si no hay red: devuelve un error con el mensaje del fetch. */
 function fail(error: PostgrestError | { message: string; code?: string }): never {
+  if (NETWORK_RE.test(error.message ?? '')) throw new BackendError('Sin conexión', 'network');
   throw new BackendError(error.message, error.code);
+}
+
+/**
+ * Usuario de la sesión guardada en el celular. Sin conexión y con el token vencido, supabase-js no
+ * puede refrescarlo y getSession() devuelve null aunque la sesión siga guardada: en ese caso se usa
+ * la guardada para no mandar al login a alguien que solo está sin señal.
+ */
+function storedUser(): AuthUser | null {
+  try {
+    const raw = localStorage.getItem(`sb-${new URL(SUPABASE_URL).hostname.split('.')[0]}-auth-token`);
+    const u = raw ? JSON.parse(raw)?.user : null;
+    return u?.id ? { id: u.id, email: u.email ?? '' } : null;
+  } catch {
+    return null;
+  }
 }
 
 /** Trae todas las filas paginando de a 1000 (PostgREST corta ahí sin avisar). */
@@ -58,8 +78,8 @@ const toLog = (r: Record<string, unknown>): SetLog => ({
 });
 
 async function userId(): Promise<string> {
-  const { data } = await sb.auth.getSession();
-  const id = data.session?.user.id;
+  const { data, error } = await sb.auth.getSession();
+  const id = data.session?.user.id ?? (error ? storedUser()?.id : undefined);
   if (!id) throw new BackendError('No hay sesión iniciada', 'no_session');
   return id;
 }
@@ -71,8 +91,9 @@ export const liveApi: Api = {
   mode: 'live',
 
   async getUser() {
-    const { data } = await sb.auth.getSession();
-    return toUser(data.session?.user);
+    const { data, error } = await sb.auth.getSession();
+    if (data.session) return toUser(data.session.user);
+    return error ? storedUser() : null;
   },
 
   onAuthChange(cb) {

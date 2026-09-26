@@ -68,10 +68,13 @@ export interface Api {
 export class BackendError extends Error {
   code?: string;
   missingSchema: boolean;
+  /** no se pudo llegar al servidor (sin conexión o señal muy mala) */
+  network: boolean;
   constructor(message: string, code?: string) {
     super(message);
     this.name = 'BackendError';
     this.code = code;
+    this.network = code === 'network';
     this.missingSchema = code === 'PGRST205' || code === 'PGRST202' || code === '42P01' || code === '42883' || code === '42703';
   }
 }

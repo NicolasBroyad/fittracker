@@ -4,7 +4,7 @@ import { createSyncStoragePersister } from '@tanstack/query-sync-storage-persist
 import { MotionConfig, motion } from 'motion/react';
 import { Toaster } from 'sonner';
 import { isDemo } from '@/api';
-import { createQueryClient } from '@/api/hooks';
+import { createQueryClient, resumeRestored } from '@/api/hooks';
 import { LoginScreen } from '@/features/auth/LoginScreen';
 import { SettingsSheet } from '@/features/settings/SettingsSheet';
 import { TodayScreen } from '@/features/today/TodayScreen';
@@ -19,6 +19,7 @@ import { ExerciseCalendarSheet } from '@/features/training/ExerciseCalendarSheet
 import { DaySessionsSheet } from '@/features/progress/DaySessionsSheet';
 import { AuthProvider, useAuth } from './auth';
 import { matchPath, navigate, useLocation } from './router';
+import { OfflineIndicator } from './OfflineIndicator';
 import { TabBar } from './TabBar';
 import { useResolvedTheme } from './theme';
 
@@ -45,6 +46,7 @@ const routes: { path: string; render: (p: Record<string, string>) => ReactNode }
 
 export function App() {
   const queryClient = useMemo(createQueryClient, []);
+  if (import.meta.env.DEV) (window as unknown as { __qc: typeof queryClient }).__qc = queryClient;
   const persister = useMemo(
     () => createSyncStoragePersister({ storage: isDemo ? undefined : window.localStorage, key: CACHE_KEY }),
     [],
@@ -61,7 +63,17 @@ export function App() {
   return (
     <PersistQueryClientProvider
       client={queryClient}
-      persistOptions={{ persister, maxAge: 1000 * 60 * 60 * 24 * 30, buster: '2.0' }}
+      persistOptions={{
+        persister,
+        maxAge: 1000 * 60 * 60 * 24 * 30,
+        buster: '2.0',
+        // también los que estaban a mitad de subirse cuando se cerró la app, no solo los pausados
+        dehydrateOptions: {
+          shouldDehydrateMutation: (m) => m.state.status === 'pending' && m.options.mutationKey?.[0] === 'offline',
+        },
+      }}
+      // cambios que quedaron en cola al cerrar la app: se suben al reabrirla
+      onSuccess={() => void resumeRestored(queryClient)}
     >
       <MotionConfig reducedMotion="user">
         <AuthProvider onSignedOut={onSignedOut}>
@@ -132,6 +144,7 @@ function Shell() {
       >
         <Suspense fallback={<div className="min-h-[100dvh]" />}>{page}</Suspense>
       </motion.main>
+      <OfflineIndicator />
       <TabBar />
       <WeightSheet />
       <SetLoggerSheet />
