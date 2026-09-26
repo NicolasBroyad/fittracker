@@ -1,10 +1,10 @@
 # FitTracker 2.0 — contexto del proyecto
 
-Rama `release/2.0`. Es una reescritura **completa del frontend, desde cero**, de FitTracker (app personal de un solo usuario para registrar el peso diario en ayunas y llevar las rutinas del gimnasio). El usuario pidió explícitamente que la 2.0 se construya **sin mirar ni basarse en el frontend de la 1.x** (que vive en `main`/`develop`): de la versión anterior solo se reutiliza el **backend** (Supabase: tablas, RLS, datos) y el concepto de **alternativas** de un ejercicio dentro de un puesto de la rutina y la numeración de los puestos. No abrir los `js/`, `css/` ni `index.html` de `main` como referencia de diseño o código.
+Publicada en producción el 2026-09-26 (hasta entonces vivía en la rama `release/2.0`). Es una reescritura **completa del frontend, desde cero**, de FitTracker (app personal de un solo usuario para registrar el peso diario en ayunas y llevar las rutinas del gimnasio). El usuario pidió explícitamente que la 2.0 se construya **sin mirar ni basarse en el frontend de la 1.x** (que vive en `main`/`develop`): de la versión anterior solo se reutiliza el **backend** (Supabase: tablas, RLS, datos) y el concepto de **alternativas** de un ejercicio dentro de un puesto de la rutina y la numeración de los puestos. No abrir los `js/`, `css/` ni `index.html` de `main` como referencia de diseño o código.
 
 **Mantené este archivo al día**: cada cambio significativo (features, arquitectura, tablas o funciones nuevas en Supabase, decisiones de diseño no obvias, gotchas) se documenta acá en el mismo commit, sin que el usuario lo tenga que pedir. Cambios cosméticos chicos no hace falta.
 
-Estructura de ramas: `main` (producción, 1.x) ← `develop` (hoy igual a `main`) ← `release/2.0` (esta).
+Estructura de ramas: `main` (producción, la 2.0) ← `develop` ← ramas de trabajo. La 1.x quedó en el historial de git (último commit de la 1.x: `9357170`); su `CLAUDE.md` viejo describe su frontend y está desactualizado en la parte de Vercel. Al publicar, `main.tsx` borra los cachés del service worker de la 1.x (`fittracker-v*`); la sesión de login se conserva porque ambas versiones usan la misma clave de Supabase en `localStorage`.
 
 ## Qué hace la app
 
