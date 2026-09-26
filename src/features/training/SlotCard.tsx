@@ -3,7 +3,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { sheets } from '@/app/sheets';
 import { MUSCLE_LABEL } from '@/lib/constants';
 import { fmtRelative } from '@/lib/dates';
-import { fmtNum, fmtSet, fmtSets, fmtTarget } from '@/lib/format';
+import { fmtSets, fmtTarget } from '@/lib/format';
 import {
   defaultAlternative,
   exerciseRecords,
@@ -163,10 +163,10 @@ function Pane({ item, label, index, statusDate }: { item: SlotItem; label: strin
           ) : (
             <div className="text-faint">Sin registros todavía</div>
           )}
-          {rec.bestE1rm && sessions.length > 1 && (
-            <Line label="Récord">
-              {rec.heaviest && fmtSet(rec.heaviest.set)}
-              <span className="text-faint"> · 1RM {fmtNum(rec.bestE1rm.value, 0)}</span>
+          {rec.best && sessions.length > 1 && (
+            <Line label="Mejor">
+              {fmtSets(rec.best.sets)}
+              <span className="text-faint"> · {fmtRelative(rec.best.date)}</span>
             </Line>
           )}
         </div>

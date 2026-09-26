@@ -79,17 +79,7 @@ function niceTicks(from: string, to: string): number[] {
   return out;
 }
 
-export function WeightChart({
-  entries,
-  phases,
-  goal,
-  goodDirection,
-}: {
-  entries: WeightEntry[];
-  phases: Phase[];
-  goal: WeightGoal | null;
-  goodDirection: 1 | -1 | 0;
-}) {
+export function WeightChart({ entries, phases, goal }: { entries: WeightEntry[]; phases: Phase[]; goal: WeightGoal | null }) {
   const [prefs, setPrefsState] = useState(readPrefs);
   const setPrefs = (patch: Partial<typeof prefs>) =>
     setPrefsState((p) => {
@@ -187,7 +177,7 @@ export function WeightChart({
 
       {model?.change != null && (
         <div className="mt-3 flex items-baseline gap-1.5 text-[13px] text-muted">
-          <Delta value={model.change} unit="kg" goodDirection={goodDirection} className="text-[15px]" />
+          <Delta value={model.change} unit="kg" className="text-[15px]" />
           <span>en el período</span>
         </div>
       )}

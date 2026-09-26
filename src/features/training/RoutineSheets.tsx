@@ -192,7 +192,7 @@ function NewRoutineForm({ onDone }: { onDone: () => void }) {
         <div className="flex items-center justify-between rounded-2xl bg-surface-2 px-4 py-3">
           <div>
             <div className="text-[15px] font-medium">Usar como rutina activa</div>
-            <div className="text-[13px] text-muted">Es la que aparece en Hoy y Entreno</div>
+            <div className="text-[13px] text-muted">Es la que aparece en Hoy y Entrenamiento</div>
           </div>
           <Switch checked={activate} onChange={setActivate} label="Usar como rutina activa" />
         </div>

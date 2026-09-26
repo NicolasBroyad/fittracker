@@ -8,15 +8,7 @@ import { DAY_NAMES } from '@/lib/constants';
 import { addDays, dayOfWeek, fmtLong, fmtRelative, mondayOf, todayISO } from '@/lib/dates';
 import { fmtNum } from '@/lib/format';
 import { dayPlan, defaultAlternative, isTrainingDay, planMuscles, slotDoneOn, slotLabel, weekStreak } from '@/lib/training';
-import {
-  activeGoal,
-  avgEndingAt,
-  currentPhase,
-  goalProgress,
-  loggingStreak,
-  preferredDirection,
-  weeklyAverages,
-} from '@/lib/weight';
+import { activeGoal, avgEndingAt, currentPhase, goalProgress, loggingStreak, weeklyAverages } from '@/lib/weight';
 import { Button, IconButton } from '@/ui/button';
 import { cn } from '@/ui/cn';
 import { Card, Delta, MuscleBadge, PhaseBadge, ProgressBar, ProgressRing, Sparkline } from '@/ui/display';
@@ -38,7 +30,7 @@ export function TodayScreen() {
         <WeightTodayCard today={today} />
         <WorkoutTodayCard today={today} />
         <div className="grid grid-cols-2 gap-3">
-          <WeeklyWeightTile today={today} />
+          <WeeklyWeightTile />
           <TrainingWeekTile today={today} />
         </div>
         <GoalTile today={today} />
@@ -49,9 +41,6 @@ export function TodayScreen() {
 
 function WeightTodayCard({ today }: { today: string }) {
   const entries = useEntries();
-  const goal = activeGoal(useGoals());
-  const phase = currentPhase(usePhases(), today);
-  const dir = preferredDirection(goal, entries, phase);
   const todayEntry = entries.find((e) => e.date === today) ?? null;
   const prev = [...entries].reverse().find((e) => e.date < today) ?? null;
   const streak = loggingStreak(entries, today);
@@ -73,7 +62,7 @@ function WeightTodayCard({ today }: { today: string }) {
           <div className="text-right text-[13px]">
             {prev && (
               <>
-                <Delta value={todayEntry.weight - prev.weight} goodDirection={dir} className="text-[15px]" />
+                <Delta value={todayEntry.weight - prev.weight} className="text-[15px]" />
                 <div className="text-muted">vs {fmtRelative(prev.date)}</div>
               </>
             )}
@@ -177,7 +166,7 @@ function WorkoutTodayCard({ today }: { today: string }) {
       <div className="relative overflow-hidden bg-[radial-gradient(120%_120%_at_100%_0%,var(--accent-soft),transparent_60%)] p-4">
         <div className="flex items-start gap-4">
           <div className="min-w-0 flex-1">
-            <div className="text-[13px] font-medium text-muted">Entreno de hoy · {active.name}</div>
+            <div className="text-[13px] font-medium text-muted">Entrenamiento de hoy · {active.name}</div>
             <div className="mt-0.5 truncate text-[26px] leading-tight font-bold tracking-tight">
               {plan.name || DAY_NAMES[dow - 1]}
             </div>
@@ -221,18 +210,15 @@ function WorkoutTodayCard({ today }: { today: string }) {
       </div>
       <div className="p-4 pt-2">
         <Button block size="lg" variant={complete ? 'secondary' : 'primary'} onClick={() => navigate('/entreno')}>
-          {complete ? '¡Entreno completo! Ver detalle' : done ? 'Seguir entrenando' : 'Empezar entreno'}
+          {complete ? '¡Entrenamiento completo! Ver detalle' : done ? 'Seguir entrenando' : 'Empezar entrenamiento'}
         </Button>
       </div>
     </div>
   );
 }
 
-function WeeklyWeightTile({ today }: { today: string }) {
+function WeeklyWeightTile() {
   const entries = useEntries();
-  const goal = activeGoal(useGoals());
-  const phase = currentPhase(usePhases(), today);
-  const dir = preferredDirection(goal, entries, phase);
   const weeks = useMemo(() => weeklyAverages(entries).slice(-8), [entries]);
   const last = entries.length ? entries[entries.length - 1] : null;
   const avg = last ? avgEndingAt(entries, last.date) : null;
@@ -247,11 +233,7 @@ function WeeklyWeightTile({ today }: { today: string }) {
       </div>
       <div className="mt-2 flex items-end justify-between gap-2">
         <span className="text-[12.5px]">
-          {avg != null && prevAvg != null ? (
-            <Delta value={avg - prevAvg} goodDirection={dir} />
-          ) : (
-            <span className="text-faint">—</span>
-          )}
+          {avg != null && prevAvg != null ? <Delta value={avg - prevAvg} /> : <span className="text-faint">—</span>}
         </span>
         <Sparkline values={weeks.map((w) => w.avg)} width={60} height={24} />
       </div>

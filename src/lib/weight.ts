@@ -198,20 +198,6 @@ export function goalProgress(goal: WeightGoal, sorted: WeightEntry[], today = to
   };
 }
 
-/**
- * Hacia dónde "conviene" que se mueva el peso, para colorear las variaciones: según la meta si hay
- * una, si no según la fase actual (definición = bajar, volumen = subir), si no neutral.
- */
-export function preferredDirection(goal: WeightGoal | null, sorted: WeightEntry[], phase: Phase | null): 1 | -1 | 0 {
-  if (goal?.target_weight != null && sorted.length) {
-    const cur = sorted[sorted.length - 1].weight;
-    if (Math.abs(goal.target_weight - cur) > 0.2) return goal.target_weight > cur ? 1 : -1;
-  }
-  if (phase?.phase === 'definicion') return -1;
-  if (phase?.phase === 'volumen') return 1;
-  return 0;
-}
-
 /** Rango de fechas visible para el gráfico según la opción elegida. */
 export type ChartRange = '1M' | '3M' | '6M' | '1A' | 'ALL';
 

@@ -7,7 +7,20 @@ import { navigate } from '@/app/router';
 import { sheets } from '@/app/sheets';
 import { useCssColors } from '@/app/theme';
 import { DAY_LETTER, MUSCLE_GROUPS, MUSCLE_LABEL } from '@/lib/constants';
-import { addDays, fmtDate, fmtDayMonth, fmtMonthShort, fmtWeekRange, fromISO, mondayOf, todayISO } from '@/lib/dates';
+import {
+  addDays,
+  addMonths,
+  daysInMonth,
+  firstOfMonth,
+  fmtDate,
+  fmtDayMonth,
+  fmtMonth,
+  fmtMonthShort,
+  fmtWeekRange,
+  fromISO,
+  mondayOf,
+  todayISO,
+} from '@/lib/dates';
 import { fmtNum, fmtPct, fmtVolume } from '@/lib/format';
 import {
   activeRoutine,
@@ -65,6 +78,7 @@ export function ProgressScreen() {
     <Page title="Progreso">
       <div className="space-y-4">
         <ThisWeekCard index={index} exById={exById} planned={planned} today={today} />
+        <TrainingCalendar index={index} today={today} />
         <Heatmap index={index} today={today} />
         <MuscleVolumeCard index={index} exById={exById} today={today} />
         <WeeklySetsCard index={index} exById={exById} today={today} />
@@ -107,15 +121,20 @@ function ThisWeekCard({
               {planned ? <span className="text-[15px] text-muted">/{planned}</span> : null}
             </>
           }
-          sub={<Delta value={cur.sessions - prev.sessions} decimals={0} goodDirection={1} />}
+          sub={<Delta value={cur.sessions - prev.sessions} decimals={0} />}
         />
-        <Stat label="Series" value={cur.sets} sub={<Delta value={cur.sets - prev.sets} decimals={0} goodDirection={1} />} />
+        <Stat label="Series" value={cur.sets} sub={<Delta value={cur.sets - prev.sets} decimals={0} />} />
         <Stat
           label="Volumen"
           value={fmtVolume(cur.volume)}
           sub={
             prev.volume > 0 ? (
-              <span className={cn('font-medium', cur.volume >= prev.volume ? 'text-good' : 'text-muted')}>
+              <span
+                className={cn(
+                  'font-medium',
+                  cur.volume > prev.volume ? 'text-good' : cur.volume < prev.volume ? 'text-bad' : 'text-muted',
+                )}
+              >
                 {fmtPct(((cur.volume - prev.volume) / prev.volume) * 100)}
               </span>
             ) : (
@@ -184,10 +203,8 @@ function Heatmap({ index, today }: { index: TrainingIndex; today: string }) {
                   const lv = level(sets);
                   const future = d > today;
                   return (
-                    <button
+                    <div
                       key={d}
-                      disabled={!sets}
-                      onClick={() => sheets.openDay(d)}
                       title={sets ? `${fmtDate(d)}: ${sets} series` : fmtDate(d)}
                       className={cn(
                         'relative aspect-square w-full overflow-hidden rounded-[4px]',
@@ -196,7 +213,7 @@ function Heatmap({ index, today }: { index: TrainingIndex; today: string }) {
                       )}
                     >
                       {lv > 0 && <span className="absolute inset-0 bg-accent-ink" style={{ opacity: opacity[lv] }} />}
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -272,7 +289,7 @@ function MuscleVolumeCard({ index, exById, today }: { index: TrainingIndex; exBy
                   )}
                 </div>
                 <span className="w-9 shrink-0 text-right text-[12px]">
-                  <Delta value={n - p} decimals={0} goodDirection={0} />
+                  <Delta value={n - p} decimals={0} />
                 </span>
               </div>
             );
@@ -434,6 +451,71 @@ function TopExercisesCard({ index, exById, today }: { index: TrainingIndex; exBy
           </span>
         </button>
       ))}
+    </Card>
+  );
+}
+
+/** Calendario mensual con los días entrenados; tocar un día muestra sus ejercicios y series. */
+function TrainingCalendar({ index, today }: { index: TrainingIndex; today: string }) {
+  const [month, setMonth] = useState(firstOfMonth(today));
+  const monthEnd = addDays(month, daysInMonth(month) - 1);
+  const weeks: string[][] = [];
+  for (let m = mondayOf(month); m <= monthEnd; m = addDays(m, 7)) weeks.push(Array.from({ length: 7 }, (_, i) => addDays(m, i)));
+  const trainedDays = index.dates.filter((d) => d >= month && d <= monthEnd);
+  const isCurrent = month === firstOfMonth(today);
+
+  return (
+    <Card>
+      <CardTitle
+        icon={<CalendarDays className="size-4" />}
+        action={
+          <div className="flex items-center gap-1">
+            <IconButton label="Mes anterior" size="sm" onClick={() => setMonth((m) => addMonths(m, -1))}>
+              <ChevronLeft className="size-4" />
+            </IconButton>
+            <IconButton label="Mes siguiente" size="sm" disabled={isCurrent} onClick={() => setMonth((m) => addMonths(m, 1))}>
+              <ChevronRight className="size-4" />
+            </IconButton>
+          </div>
+        }
+      >
+        Calendario
+      </CardTitle>
+      <div className="-mt-1 mb-3 flex items-baseline justify-between">
+        <h3 className="text-[17px] font-semibold tracking-tight">{fmtMonth(month)}</h3>
+        <span className="text-[13px] text-muted">
+          {trainedDays.length} {trainedDays.length === 1 ? 'día entrenado' : 'días entrenados'}
+        </span>
+      </div>
+      <div className="grid grid-cols-7 gap-1 text-center">
+        {DAY_LETTER.map((l, i) => (
+          <div key={i} className="pb-1 text-[11px] font-semibold text-faint">
+            {l}
+          </div>
+        ))}
+        {weeks.flat().map((d) => {
+          const sessions = index.byDate.get(d);
+          const outside = d < month || d > monthEnd;
+          return (
+            <button
+              key={d}
+              disabled={!sessions}
+              onClick={() => sheets.openDay(d)}
+              aria-label={sessions ? `${fmtDate(d)}: ${sessions.length} ejercicios` : fmtDate(d)}
+              className={cn(
+                'relative flex aspect-square flex-col items-center justify-center rounded-xl text-[14px] font-semibold tnum transition-transform active:scale-95 disabled:active:scale-100',
+                sessions ? 'bg-accent text-on-accent' : 'text-muted',
+                outside && 'opacity-30',
+                d > today && 'opacity-25',
+                d === today && !sessions && 'ring-[1.5px] ring-accent-ink',
+              )}
+            >
+              {fromISO(d).getDate()}
+              {sessions && <span className="text-[9.5px] leading-none font-medium opacity-80">{sessions.length} ej.</span>}
+            </button>
+          );
+        })}
+      </div>
     </Card>
   );
 }

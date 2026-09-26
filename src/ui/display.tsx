@@ -70,25 +70,25 @@ export function PhaseBadge({ phase, className }: { phase: PhaseKind; className?:
 }
 
 /**
- * Variación con flecha. `goodDirection`: 1 si subir es bueno, −1 si bajar es bueno, 0 neutral.
+ * Variación con flecha: verde si sube, rojo si baja. `neutral` la muestra en gris (ej. conteos).
  */
 export function Delta({
   value,
   unit = '',
   decimals = 1,
-  goodDirection = 0,
+  neutral = false,
   className,
 }: {
   value: number | null | undefined;
   unit?: string;
   decimals?: number;
-  goodDirection?: 1 | -1 | 0;
+  neutral?: boolean;
   className?: string;
 }) {
   if (value == null || !Number.isFinite(value)) return <span className={cn('text-faint', className)}>—</span>;
   const r = Number(value.toFixed(decimals));
   const Icon = r > 0 ? ArrowUpRight : r < 0 ? ArrowDownRight : Minus;
-  const tone = r === 0 || goodDirection === 0 ? 'text-muted' : Math.sign(r) === goodDirection ? 'text-good' : 'text-bad';
+  const tone = r === 0 || neutral ? 'text-muted' : r > 0 ? 'text-good' : 'text-bad';
   return (
     <span className={cn('inline-flex items-center gap-0.5 font-medium tnum', tone, className)}>
       <Icon className="size-[1.05em]" strokeWidth={2.5} />

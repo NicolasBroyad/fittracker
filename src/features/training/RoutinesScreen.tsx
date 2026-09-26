@@ -17,7 +17,7 @@ export function RoutinesScreen() {
   return (
     <Page
       title="Rutinas"
-      back={{ label: 'Entreno', fallback: '/entreno' }}
+      back={{ label: 'Entrenamiento', fallback: '/entreno' }}
       actions={
         <IconButton label="Nueva rutina" variant="accent" onClick={() => setCreating(true)}>
           <Plus className="size-5" strokeWidth={2.5} />

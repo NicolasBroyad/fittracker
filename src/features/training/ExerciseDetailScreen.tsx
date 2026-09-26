@@ -106,6 +106,24 @@ export function ExerciseDetailScreen({ id }: { id: string }) {
                   sub={<span className="text-muted">{prs.size} récords en total</span>}
                 />
               </div>
+              {records.best && (
+                <button
+                  onClick={() => sheets.openSets(id, { date: records.best!.date })}
+                  className="mt-4 w-full rounded-2xl bg-surface-2 p-3 text-left active:bg-surface-3"
+                >
+                  <div className="text-[12.5px] font-medium text-muted">
+                    <Trophy className="mr-1 inline size-3.5 -translate-y-px text-warn" />
+                    Mejor sesión · {fmtDate(records.best.date)}
+                  </div>
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {records.best.sets.map((s, i) => (
+                      <span key={i} className="rounded-lg bg-surface px-2 py-1 text-[13px] font-medium tnum dark:bg-surface-3">
+                        {fmtSet(s)}
+                      </span>
+                    ))}
+                  </div>
+                </button>
+              )}
             </Card>
 
             {sessions.length > 1 && (

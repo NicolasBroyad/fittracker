@@ -7,12 +7,12 @@ export function LogoMark({ size = 56 }: { size?: number }) {
       <path
         d="M24 64 L40 47 L53 58 L74 35"
         fill="none"
-        stroke="#C8F750"
+        stroke="#3EA2F5"
         strokeWidth="9"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
-      <circle cx="74" cy="35" r="7.5" fill="#C8F750" />
+      <circle cx="74" cy="35" r="7.5" fill="#3EA2F5" />
     </svg>
   );
 }

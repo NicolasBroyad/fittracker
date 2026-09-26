@@ -114,6 +114,8 @@ export interface ExerciseRecords {
   heaviest: { set: SetInput; date: ISODate } | null;
   mostReps: { reps: number; date: ISODate } | null;
   bestVolume: { value: number; date: ISODate } | null;
+  /** la sesión completa donde se hizo la mejor serie (ver bestSession) */
+  best: Session | null;
   sessions: number;
   lastDate: ISODate | null;
 }
@@ -124,6 +126,7 @@ export function exerciseRecords(sessions: Session[]): ExerciseRecords {
     heaviest: null,
     mostReps: null,
     bestVolume: null,
+    best: bestSession(sessions),
     sessions: sessions.length,
     lastDate: sessions.length ? sessions[sessions.length - 1].date : null,
   };
@@ -136,6 +139,36 @@ export function exerciseRecords(sessions: Session[]): ExerciseRecords {
     if (s.volume > 0 && (!r.bestVolume || s.volume >= r.bestVolume.value)) r.bestVolume = { value: s.volume, date: s.date };
   }
   return r;
+}
+
+/**
+ * Mejor sesión de un ejercicio: la que tiene la mejor serie (más peso; a igual peso, más reps). Si
+ * varias empatan, se comparan sus series de mejor a peor posición por posición; si todo empata, gana
+ * la más reciente.
+ */
+export function bestSession(sessions: Session[]): Session | null {
+  let best: Session | null = null;
+  let bestSorted: SetInput[] = [];
+  for (const s of sessions) {
+    if (!s.bestSet) continue;
+    const sorted = s.sets.slice().sort((a, b) => compareSets(b, a));
+    if (!best) {
+      best = s;
+      bestSorted = sorted;
+      continue;
+    }
+    let cmp = 0;
+    for (let i = 0; i < Math.max(sorted.length, bestSorted.length) && cmp === 0; i++) {
+      if (!sorted[i]) cmp = -1;
+      else if (!bestSorted[i]) cmp = 1;
+      else cmp = compareSets(sorted[i], bestSorted[i]);
+    }
+    if (cmp >= 0) {
+      best = s;
+      bestSorted = sorted;
+    }
+  }
+  return best;
 }
 
 export type PRKind = 'peso' | '1rm' | 'reps';

@@ -6,7 +6,7 @@ import { navigate, useLocation } from './router';
 export const TABS: { path: string; label: string; icon: LucideIcon }[] = [
   { path: '/', label: 'Hoy', icon: House },
   { path: '/peso', label: 'Peso', icon: Scale },
-  { path: '/entreno', label: 'Entreno', icon: Dumbbell },
+  { path: '/entreno', label: 'Entrenamiento', icon: Dumbbell },
   { path: '/progreso', label: 'Progreso', icon: ChartNoAxesColumn },
 ];
 
@@ -49,9 +49,7 @@ export function TabBar() {
                 className={cn('relative size-[22px] transition-colors', active ? 'text-accent-ink' : 'text-muted')}
                 strokeWidth={active ? 2.4 : 2}
               />
-              <span className={cn('relative text-[10.5px] font-semibold tracking-wide', active ? 'text-fg' : 'text-muted')}>
-                {t.label}
-              </span>
+              <span className={cn('relative text-[10.5px] font-semibold', active ? 'text-fg' : 'text-muted')}>{t.label}</span>
             </button>
           );
         })}

@@ -1,4 +1,4 @@
-import { forwardRef, type ReactNode } from 'react';
+import { forwardRef, useEffect, useState, type ReactNode } from 'react';
 import { Drawer } from 'vaul';
 import { X } from 'lucide-react';
 import { cn } from './cn';
@@ -37,10 +37,37 @@ export function SheetFooter({ children, className }: { children: ReactNode; clas
   );
 }
 
+/**
+ * Cuánto tapa el teclado en pantalla (px) según visualViewport. Vaul tiene su propio ajuste
+ * (repositionInputs) pero en iOS empujaba la hoja hacia arriba hasta sacarla de la pantalla; en su
+ * lugar la hoja se apoya justo encima del teclado y se limita a la altura visible.
+ */
+function useKeyboard(active: boolean) {
+  const [kb, setKb] = useState({ inset: 0, height: 0 });
+  useEffect(() => {
+    const vv = window.visualViewport;
+    if (!active || !vv) return;
+    const update = () => {
+      const inset = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
+      setKb({ inset: inset > 60 ? inset : 0, height: vv.height });
+    };
+    update();
+    vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
+    return () => {
+      vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
+      setKb({ inset: 0, height: 0 });
+    };
+  }, [active]);
+  return kb;
+}
+
 /** Hoja inferior tipo iOS: se arrastra hacia abajo (desde el encabezado) para cerrar. */
 export function Sheet({ open, onOpenChange, title, description, children, className, bare }: SheetProps) {
+  const kb = useKeyboard(open);
   return (
-    <Drawer.Root open={open} onOpenChange={onOpenChange}>
+    <Drawer.Root open={open} onOpenChange={onOpenChange} repositionInputs={false}>
       <Drawer.Portal>
         <Drawer.Overlay className="fixed inset-0 z-50 bg-[var(--overlay)]" />
         <Drawer.Content
@@ -48,6 +75,7 @@ export function Sheet({ open, onOpenChange, title, description, children, classN
             'fixed inset-x-0 bottom-0 z-50 mx-auto flex max-h-[92dvh] w-full max-w-lg flex-col rounded-t-[28px] border-t border-line bg-surface outline-none',
             className,
           )}
+          style={kb.inset ? { bottom: kb.inset, maxHeight: kb.height - 12 } : undefined}
         >
           <div className="mx-auto mt-2.5 h-1.5 w-10 shrink-0 rounded-full bg-surface-3" />
           <div className="flex shrink-0 items-start justify-between gap-3 px-5 pt-3 pb-2">

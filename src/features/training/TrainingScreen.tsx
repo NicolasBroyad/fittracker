@@ -158,7 +158,7 @@ export function TrainingScreen() {
 
   return (
     <Page
-      title="Entreno"
+      title="Entrenamiento"
       eyebrow={
         active ? (
           <button

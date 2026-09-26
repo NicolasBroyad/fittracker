@@ -14,7 +14,7 @@ import { IconButton } from '@/ui/button';
  * Calendario mensual con el peso de cada día y, en la última columna, el promedio de cada semana
  * (lunes a domingo, completa aunque parte caiga en el mes vecino).
  */
-export function WeightCalendar({ entries, goodDirection }: { entries: WeightEntry[]; goodDirection: 1 | -1 | 0 }) {
+export function WeightCalendar({ entries }: { entries: WeightEntry[] }) {
   const today = todayISO();
   const [month, setMonth] = useState(firstOfMonth(today));
   const [dir, setDir] = useState(0);
@@ -137,9 +137,7 @@ export function WeightCalendar({ entries, goodDirection }: { entries: WeightEntr
               <span className="text-[13px] leading-none font-bold text-accent-ink tnum">
                 {w.avg != null ? fmtNum(w.avg, 1) : w.monday <= today ? '–' : ''}
               </span>
-              {w.avg != null && prev != null && (
-                <Delta value={w.avg - prev} goodDirection={goodDirection} className="mt-1 text-[10px]" />
-              )}
+              {w.avg != null && prev != null && <Delta value={w.avg - prev} className="mt-1 text-[10px]" />}
             </div>,
           ];
         })}
@@ -147,10 +145,7 @@ export function WeightCalendar({ entries, goodDirection }: { entries: WeightEntr
 
       <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-surface-2 p-3 text-center">
         <MiniStat label="Promedio" value={summary ? fmtNum(summary.avg, 1) : '–'} />
-        <MiniStat
-          label="Cambio"
-          value={summary?.change != null ? <Delta value={summary.change} goodDirection={goodDirection} /> : '–'}
-        />
+        <MiniStat label="Cambio" value={summary?.change != null ? <Delta value={summary.change} /> : '–'} />
         <MiniStat label="Registros" value={summary ? `${summary.count}/${summary.elapsed}` : '–'} />
       </div>
       {summary && (

@@ -6,7 +6,7 @@ import { navigate } from '@/app/router';
 import { sheets } from '@/app/sheets';
 import { addDays, fmtMonth, fmtRelative, todayISO } from '@/lib/dates';
 import { fmtNum } from '@/lib/format';
-import { activeGoal, avgEndingAt, currentPhase, monthlyAverages, preferredDirection, trendPerDay } from '@/lib/weight';
+import { activeGoal, avgEndingAt, currentPhase, monthlyAverages, trendPerDay } from '@/lib/weight';
 import { Button, IconButton } from '@/ui/button';
 import { Card, CardTitle, Delta, Empty, Skeleton } from '@/ui/display';
 import { GoalCard } from './GoalCard';
@@ -22,7 +22,6 @@ export function WeightScreen() {
 
   const phase = currentPhase(phases, today);
   const goal = activeGoal(goals);
-  const dir = preferredDirection(goal, entries, phase);
   const latest = entries.length ? entries[entries.length - 1] : null;
   const loggedToday = latest?.date === today;
 
@@ -82,10 +81,10 @@ export function WeightScreen() {
             </div>
             <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-3.5">
               <HeroStat label="Prom. 7 días" value={stats?.avg7 != null ? fmtNum(stats.avg7, 1) : '–'} />
-              <HeroStat label="vs semana ant." value={<Delta value={stats?.weekChange} goodDirection={dir} />} />
+              <HeroStat label="vs semana ant." value={<Delta value={stats?.weekChange} />} />
               <HeroStat
                 label="Tendencia"
-                value={stats?.trend != null ? <Delta value={stats.trend} decimals={2} goodDirection={dir} /> : '–'}
+                value={stats?.trend != null ? <Delta value={stats.trend} decimals={2} /> : '–'}
                 sub="kg/semana"
               />
             </div>
@@ -93,17 +92,17 @@ export function WeightScreen() {
 
           <Card>
             <CardTitle icon={<LineChart className="size-4" />}>Evolución</CardTitle>
-            <WeightChart entries={entries} phases={phases} goal={goal} goodDirection={dir} />
+            <WeightChart entries={entries} phases={phases} goal={goal} />
           </Card>
 
           <GoalCard entries={entries} goals={goals} goal={goal} phases={phases} phase={phase} />
 
           <Card>
             <CardTitle icon={<CalendarDays className="size-4" />}>Calendario</CardTitle>
-            <WeightCalendar entries={entries} goodDirection={dir} />
+            <WeightCalendar entries={entries} />
           </Card>
 
-          <MonthlyCard entries={entries} dir={dir} />
+          <MonthlyCard entries={entries} />
 
           <Card onClick={() => navigate('/peso/historial')} className="flex items-center gap-3 py-3.5">
             <span className="flex size-9 items-center justify-center rounded-xl bg-surface-2 text-muted">
@@ -133,7 +132,7 @@ function HeroStat({ label, value, sub }: { label: string; value: ReactNode; sub?
   );
 }
 
-function MonthlyCard({ entries, dir }: { entries: ReturnType<typeof useEntries>; dir: 1 | -1 | 0 }) {
+function MonthlyCard({ entries }: { entries: ReturnType<typeof useEntries> }) {
   const [all, setAll] = useState(false);
   const months = useMemo(() => monthlyAverages(entries).reverse(), [entries]);
   if (months.length < 1) return null;
@@ -165,7 +164,7 @@ function MonthlyCard({ entries, dir }: { entries: ReturnType<typeof useEntries>;
               <div className="w-[64px] shrink-0 text-right">
                 <div className="text-[15px] font-semibold tnum">{fmtNum(m.avg, 1)}</div>
                 <div className="text-[12px]">
-                  {prev ? <Delta value={m.avg - prev.avg} goodDirection={dir} /> : <span className="text-faint">—</span>}
+                  {prev ? <Delta value={m.avg - prev.avg} /> : <span className="text-faint">—</span>}
                 </div>
               </div>
             </div>

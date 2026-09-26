@@ -1,18 +1,15 @@
 import { useMemo } from 'react';
-import { useEntries, useGoals, usePhases } from '@/api/hooks';
+import { useEntries } from '@/api/hooks';
 import { Page } from '@/app/Page';
 import { sheets } from '@/app/sheets';
 import { fmtMonth, fmtWeekdayShort, monthKey } from '@/lib/dates';
 import { fmtNum } from '@/lib/format';
 import type { WeightEntry } from '@/lib/types';
-import { activeGoal, currentPhase, preferredDirection } from '@/lib/weight';
+
 import { Card, Delta } from '@/ui/display';
 
 export function WeightHistoryScreen() {
   const entries = useEntries();
-  const goal = activeGoal(useGoals());
-  const phase = currentPhase(usePhases());
-  const dir = preferredDirection(goal, entries, phase);
 
   const groups = useMemo(() => {
     const out: { month: string; rows: { e: WeightEntry; prev: WeightEntry | null }[] }[] = [];
@@ -46,9 +43,7 @@ export function WeightHistoryScreen() {
                   </div>
                   <div className="text-right">
                     <div className="text-[16px] font-semibold tnum">{fmtNum(e.weight, 1)}</div>
-                    <div className="text-[12px]">
-                      {prev ? <Delta value={e.weight - prev.weight} goodDirection={dir} /> : null}
-                    </div>
+                    <div className="text-[12px]">{prev ? <Delta value={e.weight - prev.weight} /> : null}</div>
                   </div>
                 </button>
               ))}

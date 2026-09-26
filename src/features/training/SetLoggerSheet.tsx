@@ -180,7 +180,7 @@ function SetForm({ exercise, initialDate, target }: { exercise: Exercise; initia
       <SheetBody ref={formRef} className="space-y-4 pt-2">
         <DateField value={date} onChange={changeDate} max={todayISO()} />
 
-        {(ref || records.heaviest) && (
+        {(ref || records.best) && (
           <div className="rounded-2xl bg-surface-2 p-3.5">
             {ref && (
               <div className="flex items-start justify-between gap-3">
@@ -203,11 +203,19 @@ function SetForm({ exercise, initialDate, target }: { exercise: Exercise; initia
                 </button>
               </div>
             )}
-            {records.heaviest && (
-              <div className={cn('text-[12.5px] text-muted tnum', ref && 'mt-2.5 border-t border-line pt-2.5')}>
-                <Trophy className="mr-1 inline size-3.5 -translate-y-px text-warn" />
-                Récord {fmtSet(records.heaviest.set)}
-                {records.bestE1rm && <> · 1RM est. {fmtNum(records.bestE1rm.value, 1)} kg</>}
+            {records.best && records.best.date !== ref?.date && (
+              <div className={cn(ref && 'mt-2.5 border-t border-line pt-2.5')}>
+                <div className="text-[12.5px] font-medium text-muted">
+                  <Trophy className="mr-1 inline size-3.5 -translate-y-px text-warn" />
+                  Mejor sesión · {fmtRelative(records.best.date)}
+                </div>
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {records.best.sets.map((s, i) => (
+                    <span key={i} className="rounded-lg bg-surface px-2 py-1 text-[13px] font-medium tnum dark:bg-surface-3">
+                      {fmtSet(s)}
+                    </span>
+                  ))}
+                </div>
               </div>
             )}
           </div>
