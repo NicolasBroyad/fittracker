@@ -8,6 +8,7 @@ import {
   defaultAlternative,
   exerciseRecords,
   lastSession,
+  sameUnit,
   sessionOn,
   sessionsOf,
   slotLabel,
@@ -138,7 +139,9 @@ function Pane({ item, label, index, statusDate }: { item: SlotItem; label: strin
   const sessions = sessionsOf(index, item.exercise_id);
   const last = lastSession(index, item.exercise_id);
   const today = sessionOn(index, item.exercise_id, statusDate);
+  // "Mejor" entre las sesiones en la unidad de la última (kg y ladrillos no se comparan)
   const rec = exerciseRecords(sessions);
+  const comparable = sameUnit(sessions).length;
   const target = fmtTarget(item.sets_target, item.reps_target);
 
   return (
@@ -178,7 +181,7 @@ function Pane({ item, label, index, statusDate }: { item: SlotItem; label: strin
           ) : (
             <div className="text-faint">Sin registros todavía</div>
           )}
-          {rec.best && sessions.length > 1 && (
+          {rec.best && comparable > 1 && (
             <Line label="Mejor">
               {fmtSets(rec.best.sets)}
               <span className="text-faint"> · {fmtRelative(rec.best.date)}</span>

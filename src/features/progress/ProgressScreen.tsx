@@ -21,12 +21,13 @@ import {
   mondayOf,
   todayISO,
 } from '@/lib/dates';
-import { fmtNum, fmtPct, fmtVolume } from '@/lib/format';
+import { fmtNum, fmtPct, fmtSet, fmtVolume, fmtWeight, UNIT_SHORT } from '@/lib/format';
 import {
   activeRoutine,
   dayPlan,
   isTrainingDay,
   recentPRs,
+  sameUnit,
   sessionsOf,
   weekStats,
   weeklySeries,
@@ -370,9 +371,11 @@ function PRsCard({ index, exById }: { index: TrainingIndex; exById: Map<string, 
           const ex = exById.get(pr.exerciseId);
           const label =
             pr.kind === 'peso'
-              ? `${fmtNum(pr.value, 1).replace(/,0$/, '')} kg${pr.set?.reps ? ` × ${pr.set.reps}` : ''}`
+              ? pr.set
+                ? fmtSet(pr.set)
+                : fmtWeight(pr.value, pr.unit, 1)
               : pr.kind === '1rm'
-                ? `1RM est. ${fmtNum(pr.value, 1)} kg`
+                ? `1RM est. ${fmtNum(pr.value, 1)} ${UNIT_SHORT[pr.unit]}`
                 : `${pr.value} reps`;
           const diff = pr.value - pr.previous;
           return (
@@ -411,11 +414,13 @@ function TopExercisesCard({ index, exById, today }: { index: TrainingIndex; exBy
       .sort((a, b) => b.recent.length - a.recent.length)
       .slice(0, 6)
       .map((r) => {
-        const vals = sessionsOf(index, r.id)
+        // la tendencia solo con sesiones en la unidad de la última (kg y ladrillos no se comparan)
+        const vals = sameUnit(sessionsOf(index, r.id))
           .slice(-10)
           .map((s) => s.e1rm ?? s.totalReps);
-        const first = r.recent[0].e1rm ?? r.recent[0].totalReps;
-        const last = r.recent[r.recent.length - 1].e1rm ?? r.recent[r.recent.length - 1].totalReps;
+        const recent = sameUnit(r.recent);
+        const first = recent[0].e1rm ?? recent[0].totalReps;
+        const last = recent[recent.length - 1].e1rm ?? recent[recent.length - 1].totalReps;
         return { id: r.id, count: r.recent.length, vals, change: first ? ((last - first) / first) * 100 : 0 };
       });
   }, [index, exById, today]);

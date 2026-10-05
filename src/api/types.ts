@@ -61,8 +61,23 @@ export interface Api {
 
   // series
   listLogs(): Promise<SetLog[]>;
+  /**
+   * Reemplaza las series de un ejercicio en una fecha. Si alguna serie es en ladrillos o por lado y
+   * la base todavía no tiene esas columnas, falla con `SET_OPTIONS_MISSING` en vez de guardarla como
+   * kg / ambos lados sin avisar.
+   */
   replaceSessionSets(exerciseId: string, date: ISODate, sets: SetInput[]): Promise<SetLog[]>;
+  /** ¿La base ya tiene la migración de ladrillos y series por lado (weight_unit / reps_right)? */
+  supportsSetOptions(): Promise<boolean>;
 }
+
+export const SET_OPTIONS_MISSING = 'set_options_missing';
+
+/** true si alguna serie necesita las columnas nuevas (ladrillos o por lado). */
+export const needsSetOptions = (sets: SetInput[]) => sets.some((s) => s.weight_unit === 'ladrillos' || s.reps_right != null);
+
+export const setOptionsMissingError = () =>
+  new BackendError('Falta aplicar en Supabase la migración de ladrillos y series por lado: no se guardó.', SET_OPTIONS_MISSING);
 
 /** Error del backend normalizado. `missingSchema` = falta aplicar la migración de la 2.0. */
 export class BackendError extends Error {

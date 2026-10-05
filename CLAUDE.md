@@ -17,7 +17,7 @@ Cuatro pestañas (barra flotante abajo, estilo iOS) + pantallas secundarias:
 - `/entreno/rutinas`: lista de rutinas (activa primero), crear (vacía o copiando otra), activar.
 - `/entreno/rutinas/:id?dia=N`: **editor de rutina**. Pestañas por día; nombre del día, switch de descanso (los ejercicios se conservan ocultos), puestos reordenables arrastrando (Motion `Reorder` con manija), objetivo series × reps **por puesto y por día**, "+ Alternativa" por puesto, "+ Agregar ejercicio" (buscador con creación inline). **Guardado automático** (debounce ~700 ms y al cambiar de día/salir) vía la RPC `save_routine_day`. Menú: renombrar, activar, duplicar, eliminar.
 - En Entrenamiento, cada tarjeta de ejercicio tiene un botón de calendario que abre una hoja con un calendario mensual **solo de ese ejercicio** (días hechos, récords con punto dorado, detalle de series del día elegido, lista del mes y "Editar"). El botón "Ordenar" del día pasa a una lista compacta reordenable arrastrando (`ReorderSlots.tsx`); cada puesto se mueve con todas sus alternativas y se guarda al soltar (`save_routine_day`).
-- Las series de una sesión se muestran separadas por guión: `80 kg × 12-11-10` (`fmtSets`).
+- Las series de una sesión se muestran separadas por guión: `80 kg × 12-11-10` (`fmtSets`). En ladrillos: `7 ladr. × 12`; por lado (izquierda/derecha): `20 kg × 12/10 - 11/10` (con espacios entre series para que se lea).
 - Gráfico de peso: con un rango (1M/3M/6M/1A) las flechas junto al "en el período" navegan a períodos anteriores del mismo largo. La línea de meta se dibuja por encima del relleno del gráfico (antes quedaba tapada cuando la meta estaba por debajo de la curva); si no hay meta vigente, el botón "Meta" avisa en vez de no hacer nada.
 - `/entreno/ejercicios`: catálogo con búsqueda (sin tildes) y filtro por grupo muscular. `/entreno/ejercicios/:id`: récords (1RM estimado Epley, mejor serie, sesiones), gráfico de progreso (1RM est. / peso máx. / volumen; puntos dorados = récords), en qué rutinas/días está, historial completo (tocar una sesión la abre para editarla).
 
@@ -28,7 +28,9 @@ Cuatro pestañas (barra flotante abajo, estilo iOS) + pantallas secundarias:
 - **Puestos y alternativas.** Dentro de un día, cada ejercicio tiene `order_index` (el puesto: 1, 2, 3…) y `variant`. Varios ejercicios con el mismo `order_index` son **alternativas intercambiables** de ese puesto (ej. press inclinado con mancuernas vs. en Smith), cada uno con su propio historial y objetivo. Se numeran `2a`, `2b`… La numeración que se muestra es la posición real (1..n), no el `order_index` crudo. En Entreno, un puesto con alternativas es un carrusel deslizable (scroll-snap) con flechas y puntitos (las flechas son para desktop); **arranca en la alternativa registrada más recientemente** (`defaultAlternative` en `src/lib/training.ts`) y, si el usuario desliza a otra, se recuerda en memoria mientras la app siga abierta (`chosen` en `SlotCard.tsx`).
 - **Series = reemplazo por día.** Guardar las series de un ejercicio en una fecha **reemplaza** todas las de esa fecha (RPC atómica `replace_session_sets`); es la misma acción para cargar hoy o corregir un día viejo. Guardar vacío borra la sesión. En la hoja de series, los placeholders muestran la sesión anterior; si una serie tiene reps pero el peso vacío, se usa el peso de esa serie de la vez anterior (está aclarado en la UI). "Repetir" copia la sesión anterior completa.
 - **Días corridos de la semana** (`assignWeek` / `pendingDays` en `src/lib/training.ts`): la app no exige entrenar cada día de la rutina en su día. Compara lo cargado en cada fecha de la semana contra los puestos de cada día planificado (cualquier alternativa cuenta; mínimo 30% de los puestos) y asigna cada fecha al día de la rutina más parecido (greedy por coincidencia; a igualdad, el día que corresponde a esa fecha y después el más cercano). Así, si Pull (martes) se hizo el miércoles, en Entrenamiento el martes figura hecho con la marca "mié" y "Lo hiciste el miércoles…", y el miércoles dice qué se hizo ese día. En Hoy: si hoy ya cargaste algo de otro día, la tarjeta muestra ese día; si un día anterior de la semana quedó sin hacer, aparece un aviso "Te quedó pendiente…" con "Hacerlo hoy" (lleva a ese día; se carga con la fecha de hoy y la detección lo da por hecho). No se guarda nada extra en la base. El modo demo reproduce este caso en la semana actual.
-- **Récords**: una sesión es récord si supera el peso máximo previo de ese ejercicio, o si no, el mejor 1RM estimado previo, o (peso corporal) las reps máximas. La primera sesión nunca es récord.
+- **Récords**: una sesión es récord si supera el peso máximo previo de ese ejercicio, o si no, el mejor 1RM estimado previo, o (peso corporal) las reps máximas. La primera sesión nunca es récord. Los máximos se llevan **por unidad** (`detectPRs`; `newRecord` para el toast al guardar): la primera sesión en una unidad nueva tampoco es récord.
+- **Unidad del peso: kg o ladrillos** (para máquinas que no dicen cuánto pesa cada placa; se permiten medios ladrillos, 7,5). Se guarda por serie (`weight_unit`), pero la hoja usa una sola unidad por sesión: selector "Kilos / Ladrillos" que arranca como la sesión de ese día o, si no hay, la de la vez anterior. `Session.unit` es la unidad de la sesión. **Nunca se mezclan unidades**: récords, "Mejor", gráfico del detalle y tendencias usan solo las sesiones en la unidad de la última (`sameUnit`, `exerciseRecords(sessions, unit)`; en el detalle, si hay de las dos, un selector "En kilos / En ladrillos"); el volumen en kg (semana, día, historial) no suma las sesiones en ladrillos; "peso vacío = el de la vez anterior" solo si la vez anterior fue en la misma unidad (si no, pide completar el peso). En la hoja de series, "Mejor sesión" es la de la unidad elegida.
+- **Series por lado (unilaterales)**: selector "Ambos lados / Por lado" (arranca igual que la unidad). Por lado, cada serie tiene reps izquierda (`reps`) y derecha (`reps_right`; null = bilateral), con el mismo peso; si la derecha queda vacía se guarda igual que la izquierda, y la hoja muestra la diferencia (−2 en rojo). Para récords, mejor serie y 1RM cuenta el mejor lado (`bestReps`); volumen y reps totales suman los dos (`setReps`).
 - **Metas de peso**: historial inmutable (cada cambio inserta una fila; la vigente es la más reciente; "quitar meta" = fila con `target_weight` null). Ahora con `target_date` opcional.
 - **Fases** (volumen/definición/mantenimiento): períodos con inicio y fin opcional (sin fin = en curso). Crear una fase en curso cierra la anterior en curso el día previo.
 - **Color de las variaciones**: siempre verde si sube y rojo si baja, sin importar la fase ni la meta (pedido del usuario; antes dependía de la fase y se sacó). `Delta` con `neutral` queda gris. Fases en el gráfico: volumen verde, definición rojo, mantenimiento violeta.
@@ -78,7 +80,7 @@ src/
   app/                   App (rutas, providers, shell), Page (título grande + barra compacta al scrollear), TabBar, router, theme, auth, sheets (hojas globales)
   features/              pantallas por dominio: today, weight, training, progress, auth, settings
 supabase/
-  migrations/            SQL versionado (las de la 1.x + 20260925000000_v2_routines.sql)
+  migrations/            SQL versionado (las de la 1.x + 20260925000000_v2_routines.sql + 20261005010000_set_units_unilateral.sql)
   tests/migrations.test.mjs   aplica todas las migraciones sobre PGlite y verifica backfill, RPCs y RLS
 ```
 
@@ -97,13 +99,20 @@ Migración `20260925000000_v2_routines.sql` (**hay que aplicarla antes de usar l
 - RPC (security invoker, respetan RLS): `replace_session_sets(p_exercise_id, p_session_date, p_sets jsonb)`, `save_routine_day(p_routine_id, p_day, p_name, p_is_rest, p_items jsonb)`, `set_active_routine(p_routine_id)`.
 - Índices en `routine_logs` por ejercicio+fecha y usuario+fecha.
 
-Para aplicarla: desde una máquina con el CLI de Supabase y `.supabase-credentials` (ver el `CLAUDE.md` de `main`), `supabase db push`; o pegando el SQL en el SQL Editor del dashboard. Antes, `npm run test:db` la prueba localmente.
+Migración `20261005010000_set_units_unilateral.sql` (ladrillos y series por lado; aditiva e idempotente):
+- `routine_logs.weight_unit text not null default 'kg'` (check `kg`/`ladrillos`) y `routine_logs.reps_right smallint` (null = ambos lados). La 1.x y cualquier cliente viejo siguen insertando sin esas columnas y quedan en kg/bilateral. Ojo: si se edita desde la 1.x una sesión en ladrillos o por lado, se reescribe como kg/bilateral (la 1.x borra e inserta).
+- `replace_session_sets` (misma firma) ahora guarda `weight_unit` y `reps_right` de cada elemento de `p_sets`; si no vienen, kg y bilateral.
+- **Sin la migración la app no se rompe**: `listLogs` pide las columnas nuevas y, si PostgREST responde `42703` (columna inexistente), vuelve a pedir sin ellas y marca que falta (se reintenta en cada lectura, así se entera sola al aplicarla). `supportsSetOptions()` / `useSetOptionsSupport()` lo exponen: la hoja de series avisa y no deja guardar en ladrillos o por lado, y `replaceSessionSets` también lo rechaza (`SET_OPTIONS_MISSING`) para las cargas que quedaron en cola, porque la función vieja ignora las claves que no conoce y las guardaría como kg sin avisar.
+- Las series guardadas en el caché persistido (y las cargas en cola) de versiones anteriores no traen esos campos: `buildIndex` y `live.ts` los toman como kg/bilateral. No se subió el `buster` del caché porque borraría también la cola sin conexión.
+- Historial: otra sesión de Claude llegó a aplicar y deshacer una migración `20261005000000_set_units_unilateral` (mismo contenido); se verificó que en la base no quedó nada y por eso esta usa otra versión.
+
+Para aplicar una migración: desde una máquina con el CLI de Supabase y `.supabase-credentials` (ver el `CLAUDE.md` de `main`), `supabase db push`; o pegando el SQL en el SQL Editor del dashboard. Antes, `npm run test:db` la prueba localmente (aplica las de la 1.x, carga datos como la 1.x, la de la 2.0 y después las posteriores en orden). Para verificar columnas sin credenciales sirve la API REST con la anon key: `GET /rest/v1/routine_logs?select=<columna>&limit=1` responde 400 `42703` si la columna no existe.
 
 **Gotcha**: PostgREST de Supabase devuelve como máximo 1000 filas por request sin avisar; `live.ts` pagina (`fetchAll`) las tablas que pueden crecer (series, pesos, ejercicios, ítems de rutina).
 
 ## Desarrollo
 
-En esta máquina Node está en `~/.local/node` (instalado a mano, no había): `export PATH="$HOME/.local/node/bin:$PATH"`.
+En esta máquina Node está instalado en el sistema (`/usr/bin/node`; antes estaba a mano en `~/.local/node`, ya no existe).
 
 ```bash
 npm install
@@ -114,7 +123,7 @@ npm run test:db      # migraciones sobre PGlite
 npm run format       # prettier (+ orden de clases de Tailwind)
 ```
 
-**Modo demo**: `?demo` en la URL, solo en `npm run dev` (en el build de producción ese código ni se incluye). Es la forma de verificar la UI desde Claude Code: acá no se puede iniciar sesión con la cuenta real (el entorno bloquea escribir contraseñas en formularios de login), así que el flujo con datos reales lo prueba el usuario.
+**Modo demo**: `?demo` en la URL, solo en `npm run dev` (en el build de producción ese código ni se incluye). Para probar ladrillos y por lado: "Pec deck" (Push) pasó de kg a ladrillos hace 6 semanas, con medios ladrillos; "Camilla de cuádriceps" (Piernas) es por lado. `localStorage.setItem('demo-sin-ladrillos', '1')` simula que falta la migración de ladrillos/por lado. Es la forma de verificar la UI desde Claude Code: acá no se puede iniciar sesión con la cuenta real (el entorno bloquea escribir contraseñas en formularios de login), así que el flujo con datos reales lo prueba el usuario.
 
 ## Diseño / gotchas de UI
 

@@ -38,8 +38,8 @@ await db.exec(`
 
 const files = readdirSync(MIG).sort();
 const v2 = files.find((f) => f.includes('v2_routines'));
-for (const f of files.filter((f) => f !== v2)) await db.exec(readFileSync(`${MIG}/${f}`, 'utf8'));
-console.log('migraciones 1.x aplicadas:', files.length - 1);
+for (const f of files.filter((f) => f < v2)) await db.exec(readFileSync(`${MIG}/${f}`, 'utf8'));
+console.log('migraciones 1.x aplicadas:', files.filter((f) => f < v2).length);
 
 // datos como los dejaría la 1.x (el usuario A tiene rutina; B no)
 await db.exec(`
@@ -58,6 +58,16 @@ await db.exec(`
 
 await db.exec(readFileSync(`${MIG}/${v2}`, 'utf8'));
 console.log('migración 2.0 aplicada');
+const after = files.filter((f) => f > v2);
+for (const f of after) await db.exec(readFileSync(`${MIG}/${f}`, 'utf8'));
+console.log('migraciones posteriores aplicadas:', after.join(', ') || 'ninguna');
+let rerun = true;
+try {
+  for (const f of after) await db.exec(readFileSync(`${MIG}/${f}`, 'utf8'));
+} catch {
+  rerun = false;
+}
+ok(rerun, 'las migraciones posteriores se pueden volver a aplicar sin error');
 
 // Supabase da estos permisos por defecto a "authenticated"
 await db.exec(`grant usage on schema public to authenticated;
@@ -123,9 +133,49 @@ await as(A, async () => {
   );
   const logs = await db.query(`select count(*)::int n from public.routine_logs where session_date = '2026-09-20'`);
   ok(logs.rows[0].n === 3, 'la serie vieja de ese día se reemplazó');
+  ok(
+    ins.rows.every((x) => x.weight_unit === 'kg' && x.reps_right === null),
+    'sin weight_unit ni reps_right (cliente viejo) quedan en kg y bilaterales',
+  );
   await db.query(`select * from public.replace_session_sets('aaaaaaaa-0000-0000-0000-000000000001', '2026-09-20', '[]'::jsonb)`);
   const logs2 = await db.query(`select count(*)::int n from public.routine_logs where session_date = '2026-09-20'`);
   ok(logs2.rows[0].n === 0, 'array vacío borra la sesión');
+
+  const uni = await db.query(
+    `select * from public.replace_session_sets('aaaaaaaa-0000-0000-0000-000000000002', '2026-09-22', $1::jsonb)`,
+    [
+      JSON.stringify([
+        { weight: 7.5, reps: 12, weight_unit: 'ladrillos', reps_right: 10 },
+        { weight: 7.5, reps: 11, weight_unit: 'ladrillos', reps_right: null },
+      ]),
+    ],
+  );
+  ok(
+    uni.rows.length === 2 &&
+      Number(uni.rows[0].weight) === 7.5 &&
+      uni.rows[0].weight_unit === 'ladrillos' &&
+      uni.rows[0].reps_right === 10 &&
+      uni.rows[1].reps_right === null,
+    'replace_session_sets guarda ladrillos (con medios) y reps del lado derecho',
+  );
+  let badUnit = false;
+  try {
+    await db.query(
+      `select * from public.replace_session_sets('aaaaaaaa-0000-0000-0000-000000000002', '2026-09-23', '[{"weight": 10, "reps": 8, "weight_unit": "lbs"}]'::jsonb)`,
+    );
+  } catch {
+    badUnit = true;
+  }
+  ok(badUnit, 'una unidad desconocida se rechaza');
+  // la 1.x inserta directo en la tabla sin las columnas nuevas
+  await db.query(
+    `insert into public.routine_logs (exercise_id, session_date, set_number, weight, reps) values ('aaaaaaaa-0000-0000-0000-000000000003', '2026-09-24', 1, 40, 10) `,
+  );
+  const v1row = await db.query(`select weight_unit, reps_right from public.routine_logs where session_date = '2026-09-24'`);
+  ok(
+    v1row.rows[0].weight_unit === 'kg' && v1row.rows[0].reps_right === null,
+    'un insert como el de la 1.x queda en kg y bilateral',
+  );
 
   const r2 = await db.query(`insert into public.routines (name) values ('Full body') returning id`);
   await db.query(`select public.set_active_routine($1)`, [r2.rows[0].id]);

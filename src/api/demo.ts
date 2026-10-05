@@ -15,7 +15,7 @@ import type {
   WeightEntry,
   WeightGoal,
 } from '@/lib/types';
-import { BackendError, type Api, type AuthUser } from './types';
+import { BackendError, needsSetOptions, setOptionsMissingError, type Api, type AuthUser } from './types';
 
 function rng(seed: number) {
   return () => {
@@ -97,6 +97,8 @@ function seed(): Store {
     ['Gemelos de pie', 'Gemelo', 80],
     ['Plancha', 'Abdomen', 0],
     ['Face pull', 'Hombro', 20],
+    ['Pec deck', 'Pecho', 45],
+    ['Camilla de cuádriceps', 'Pierna', 35],
   ];
   const created = new Date(start + 'T10:00:00').toISOString();
   const exercises: Exercise[] = defs.map(([name, muscle_group]) => ({ id: uid(), name, muscle_group, created_at: created }));
@@ -130,6 +132,7 @@ function seed(): Store {
     [['Press militar'], 3, '8-10'],
     [['Elevaciones laterales'], 4, '12-15'],
     [['Extensión de tríceps en polea'], 3, '10-12'],
+    [['Pec deck'], 3, '10-12'],
   ]);
   addDay(ppl, 2, 'Pull', [
     [['Dominadas', 'Jalón al pecho'], 4, '6-10'],
@@ -142,6 +145,7 @@ function seed(): Store {
     [['Sentadilla', 'Hack squat'], 4, '6-8'],
     [['Peso muerto rumano'], 3, '8-10'],
     [['Prensa'], 3, '10-12'],
+    [['Camilla de cuádriceps'], 3, '10-12'],
     [['Gemelos de pie'], 4, '12-15'],
   ]);
   addDay(ppl, 4, '', [], true);
@@ -177,6 +181,10 @@ function seed(): Store {
   ]);
 
   // ── series: últimas 14 semanas siguiendo la rutina activa, con progresión ──
+  // Pec deck: hasta hace 6 semanas en kg y desde ahí en ladrillos (de a medio). Camilla de
+  // cuádriceps: a una pierna, por lado, con la derecha a veces más floja.
+  const pecDeck = ex('Pec deck').id;
+  const camilla = ex('Camilla de cuádriceps').id;
   const logs: SetLog[] = [];
   const slotChoice = new Map<string, number>();
   for (let i = 98; i >= 0; i--) {
@@ -199,7 +207,8 @@ function seed(): Store {
       const progress = 1 + ((98 - i) / 98) * 0.12;
       const bw = baseWeight.get(it.exercise_id) ?? 0;
       const step = bw >= 40 ? 2.5 : 1;
-      const w = bw > 0 ? round(bw * progress, step) : null;
+      const bricks = it.exercise_id === pecDeck && i <= 42;
+      const w = bricks ? 6 + Math.floor((42 - i) / 12) * 0.5 : bw > 0 ? round(bw * progress, step) : null;
       const topReps = Number.parseInt(it.reps_target ?? '10', 10) || 10;
       for (let s = 1; s <= (it.sets_target ?? 3); s++) {
         const reps = Math.max(3, topReps + 2 - s - Math.floor(r() * 2));
@@ -210,6 +219,8 @@ function seed(): Store {
           set_number: s,
           weight: w,
           reps: bw === 0 && it.reps_target === '45s' ? 45 : reps,
+          weight_unit: bricks ? 'ladrillos' : 'kg',
+          reps_right: it.exercise_id === camilla ? Math.max(3, reps - Math.floor(r() * 3)) : null,
         });
       }
     }
@@ -222,6 +233,9 @@ const wait = <T>(v: T, ms = 120) => new Promise<T>((res) => setTimeout(() => res
 
 /** En demo se puede simular que no hay señal: localStorage 'demo-offline' = '1'. */
 export const demoOffline = () => localStorage.getItem('demo-offline') === '1';
+
+/** Y que falta la migración de ladrillos / series por lado: localStorage 'demo-sin-ladrillos' = '1'. */
+const demoNoSetOptions = () => localStorage.getItem('demo-sin-ladrillos') === '1';
 
 export function createDemoApi(): Api {
   const api = createDemoApiInner();
@@ -346,7 +360,9 @@ function createDemoApiInner(): Api {
     },
 
     listLogs: () => wait(db.logs),
+    supportsSetOptions: () => wait(!demoNoSetOptions(), 0),
     async replaceSessionSets(exerciseId, date, sets) {
+      if (demoNoSetOptions() && needsSetOptions(sets)) throw setOptionsMissingError();
       db.logs = db.logs.filter((l) => !(l.exercise_id === exerciseId && l.session_date === date));
       const rows: SetLog[] = sets.map((s, i) => ({
         id: uid(),
@@ -355,6 +371,8 @@ function createDemoApiInner(): Api {
         set_number: i + 1,
         weight: s.weight,
         reps: s.reps,
+        weight_unit: s.weight_unit,
+        reps_right: s.reps_right,
       }));
       db.logs.push(...rows);
       return wait(rows);

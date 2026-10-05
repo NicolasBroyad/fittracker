@@ -8,8 +8,9 @@ import { sheets } from '@/app/sheets';
 import { useCssColors } from '@/app/theme';
 import { DAY_NAMES, MUSCLE_LABEL } from '@/lib/constants';
 import { fmtDate, fmtDayMonth, fmtMonthShort, fmtRelative, fmtWeekdayShort, fromISO, toISO } from '@/lib/dates';
-import { fmtNum, fmtSet, fmtTarget, fmtVolume } from '@/lib/format';
-import { detectPRs, exerciseRecords, exerciseUsage, sessionsOf, type PRKind, type Session } from '@/lib/training';
+import { fmtNum, fmtSet, fmtTarget, fmtVolume, UNIT_SHORT } from '@/lib/format';
+import { detectPRs, exerciseRecords, exerciseUsage, sameUnit, sessionsOf, type PRKind, type Session } from '@/lib/training';
+import type { WeightUnit } from '@/lib/types';
 import { Button, IconButton } from '@/ui/button';
 import { cn } from '@/ui/cn';
 import { Segmented } from '@/ui/controls';
@@ -28,12 +29,19 @@ export function ExerciseDetailScreen({ id }: { id: string }) {
   const [editing, setEditing] = useState(false);
   const [metric, setMetric] = useState<Metric>('1rm');
   const [showAll, setShowAll] = useState(false);
+  const [unitChoice, setUnitChoice] = useState<WeightUnit | null>(null);
 
   const sessions = sessionsOf(index, id);
-  const records = useMemo(() => exerciseRecords(sessions), [sessions]);
+  // kg y ladrillos no se comparan: récords y gráfico van con una sola unidad (por defecto, la de la
+  // última sesión; si hay de las dos, se puede cambiar)
+  const units = useMemo(() => new Set(sessions.map((s) => s.unit)), [sessions]);
+  const unit: WeightUnit = unitChoice && units.has(unitChoice) ? unitChoice : (sessions[sessions.length - 1]?.unit ?? 'kg');
+  const comparable = useMemo(() => sameUnit(sessions, unit), [sessions, unit]);
+  const records = useMemo(() => exerciseRecords(sessions, unit), [sessions, unit]);
   const prs = useMemo(() => new Map(detectPRs(sessions).map((p) => [p.date, p])), [sessions]);
+  const chartPRs = useMemo(() => new Map(Array.from(prs).filter(([, p]) => p.unit === unit)), [prs, unit]);
   const usage = exerciseUsage(routines, id);
-  const hasWeight = sessions.some((s) => (s.topWeight ?? 0) > 0);
+  const hasWeight = comparable.some((s) => (s.topWeight ?? 0) > 0);
 
   if (!exercise) {
     return (
@@ -84,10 +92,26 @@ export function ExerciseDetailScreen({ id }: { id: string }) {
         ) : (
           <>
             <Card>
+              {units.size > 1 && (
+                <div className="mb-4">
+                  <Segmented<WeightUnit>
+                    size="sm"
+                    value={unit}
+                    onChange={setUnitChoice}
+                    options={[
+                      { value: 'kg', label: 'En kilos' },
+                      { value: 'ladrillos', label: 'En ladrillos' },
+                    ]}
+                  />
+                  <p className="mt-1.5 text-center text-[11.5px] text-faint">
+                    Kilos y ladrillos no se comparan: récords y gráfico van con {comparable.length} de {sessions.length} sesiones.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-x-4 gap-y-4">
                 <Stat
                   label="1RM estimado"
-                  value={records.bestE1rm ? `${fmtNum(records.bestE1rm.value, 1)} kg` : '—'}
+                  value={records.bestE1rm ? `${fmtNum(records.bestE1rm.value, 1)} ${UNIT_SHORT[unit]}` : '—'}
                   sub={records.bestE1rm && <span className="text-muted">{fmtDate(records.bestE1rm.date)}</span>}
                 />
                 <Stat
@@ -126,9 +150,9 @@ export function ExerciseDetailScreen({ id }: { id: string }) {
               )}
             </Card>
 
-            {sessions.length > 1 && (
+            {comparable.length > 1 && (
               <Card>
-                <CardTitle>Progreso</CardTitle>
+                <CardTitle>Progreso{units.size > 1 && ` en ${unit === 'kg' ? 'kilos' : 'ladrillos'}`}</CardTitle>
                 <Segmented<Metric>
                   size="sm"
                   value={hasWeight ? metric : 'volumen'}
@@ -143,7 +167,13 @@ export function ExerciseDetailScreen({ id }: { id: string }) {
                       : [{ value: 'volumen', label: 'Repeticiones totales' }]
                   }
                 />
-                <ProgressChart sessions={sessions} metric={hasWeight ? metric : 'volumen'} repsMode={!hasWeight} prDates={prs} />
+                <ProgressChart
+                  sessions={comparable}
+                  unit={unit}
+                  metric={hasWeight ? metric : 'volumen'}
+                  repsMode={!hasWeight}
+                  prDates={chartPRs}
+                />
               </Card>
             )}
           </>
@@ -206,8 +236,13 @@ export function ExerciseDetailScreen({ id }: { id: string }) {
                       ))}
                     </div>
                     <div className="mt-1 flex items-center gap-2 text-[12px] text-muted tnum">
-                      {s.volume > 0 && <span>{fmtVolume(s.volume)}</span>}
-                      {s.e1rm != null && <span>1RM {fmtNum(s.e1rm, 1)}</span>}
+                      {s.volume > 0 && s.unit === 'kg' && <span>{fmtVolume(s.volume)}</span>}
+                      {s.e1rm != null && (
+                        <span>
+                          1RM {fmtNum(s.e1rm, 1)}
+                          {s.unit !== 'kg' && ` ${UNIT_SHORT[s.unit]}`}
+                        </span>
+                      )}
                       {pr && (
                         <span className="inline-flex items-center gap-1 font-semibold text-warn">
                           <Trophy className="size-3" />
@@ -242,11 +277,13 @@ export function ExerciseDetailScreen({ id }: { id: string }) {
 
 function ProgressChart({
   sessions,
+  unit: weightUnit,
   metric,
   repsMode,
   prDates,
 }: {
   sessions: Session[];
+  unit: WeightUnit;
   metric: Metric;
   repsMode: boolean;
   prDates: Map<string, unknown>;
@@ -265,7 +302,9 @@ function ProgressChart({
   const vals = data.map((d) => d.value);
   const pad = (Math.max(...vals) - Math.min(...vals)) * 0.15 || 2;
   const span = (data[data.length - 1].x - data[0].x) / 86_400_000;
-  const unit = metric === 'volumen' ? (repsMode ? ' reps' : ' kg') : ' kg';
+  const unit = metric === 'volumen' && repsMode ? ' reps' : ` ${UNIT_SHORT[weightUnit]}`;
+  // el volumen en kg se abrevia en toneladas; en ladrillos no
+  const kgVolume = metric === 'volumen' && !repsMode && weightUnit === 'kg';
   const first = vals[0];
   const last = vals[vals.length - 1];
   const change = first ? ((last - first) / first) * 100 : 0;
@@ -274,7 +313,7 @@ function ProgressChart({
     <div>
       <div className="mt-3 flex items-baseline gap-2">
         <span className="font-display text-[26px] font-semibold tnum">
-          {metric === 'volumen' && !repsMode ? fmtVolume(last) : fmtNum(last, metric === '1rm' ? 1 : 0).replace(/,0$/, '') + unit}
+          {kgVolume ? fmtVolume(last) : fmtNum(last, metric === '1rm' ? 1 : 0).replace(/,0$/, '') + unit}
         </span>
         <span className={cn('text-[13px] font-semibold tnum', change > 0 ? 'text-good' : change < 0 ? 'text-bad' : 'text-muted')}>
           {change > 0 ? '+' : ''}
@@ -316,9 +355,7 @@ function ProgressChart({
                   <div className="rounded-xl border border-line bg-surface px-3 py-2 text-[12.5px] shadow-lg">
                     <div className="text-muted">{fmtDate(d.date)}</div>
                     <div className="font-semibold tnum">
-                      {metric === 'volumen' && !repsMode
-                        ? fmtVolume(d.value)
-                        : `${fmtNum(d.value, metric === '1rm' ? 1 : 0)}${unit}`}
+                      {kgVolume ? fmtVolume(d.value) : `${fmtNum(d.value, metric === '1rm' ? 1 : 0)}${unit}`}
                     </div>
                     {d.pr && <div className="font-semibold text-warn">Récord</div>}
                   </div>

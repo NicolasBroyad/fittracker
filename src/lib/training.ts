@@ -1,5 +1,16 @@
 import { addDays, dayOfWeek, mondayOf, todayISO } from './dates';
-import type { Exercise, ISODate, MuscleGroup, PlanDay, PlanItem, Routine, RoutineData, SetInput, SetLog } from './types';
+import type {
+  Exercise,
+  ISODate,
+  MuscleGroup,
+  PlanDay,
+  PlanItem,
+  Routine,
+  RoutineData,
+  SetInput,
+  SetLog,
+  WeightUnit,
+} from './types';
 
 // ── Sesiones ───────────────────────────────────────────────────────────────
 
@@ -7,10 +18,16 @@ export interface Session {
   exerciseId: string;
   date: ISODate;
   sets: SetInput[];
+  /** unidad del peso de la sesión: kg y ladrillos nunca se comparan ni se suman entre sí */
+  unit: WeightUnit;
+  /** alguna serie tiene reps por lado (izquierda/derecha) */
+  unilateral: boolean;
   topWeight: number | null;
   bestSet: SetInput | null;
   e1rm: number | null;
+  /** peso × reps en la unidad de la sesión (en ladrillos no son kg) */
   volume: number;
+  /** reps totales (por lado suma los dos) */
   totalReps: number;
   setCount: number;
 }
@@ -22,29 +39,58 @@ export function estimate1RM(weight: number | null, reps: number | null): number 
   return weight * (1 + reps / 30);
 }
 
-/** Compara dos series: más peso gana; a igual peso, más repeticiones. */
+/** Reps que cuentan para récords y 1RM: en una serie por lado, el mejor lado. */
+export function bestReps(s: SetInput): number | null {
+  if (s.reps_right == null) return s.reps;
+  return Math.max(s.reps ?? 0, s.reps_right);
+}
+
+/** Reps hechas en la serie: por lado suma los dos lados (para volumen y reps totales). */
+export function setReps(s: SetInput): number {
+  return (s.reps ?? 0) + (s.reps_right ?? 0);
+}
+
+/** Compara dos series: más peso gana; a igual peso, más repeticiones (del mejor lado). */
 export function compareSets(a: SetInput, b: SetInput): number {
   const wa = a.weight ?? 0;
   const wb = b.weight ?? 0;
   if (wa !== wb) return wa - wb;
-  return (a.reps ?? 0) - (b.reps ?? 0);
+  return (bestReps(a) ?? 0) - (bestReps(b) ?? 0);
+}
+
+/** Unidad de una sesión: la de sus series con peso (si no hay, la de la primera; si no, kg). */
+export function sessionUnit(sets: SetInput[]): WeightUnit {
+  return (sets.find((s) => s.weight != null && s.weight > 0) ?? sets[0])?.weight_unit ?? 'kg';
 }
 
 export function makeSession(exerciseId: string, date: ISODate, sets: SetInput[]): Session {
+  const unit = sessionUnit(sets);
   let topWeight: number | null = null;
   let bestSet: SetInput | null = null;
   let e1rm: number | null = null;
   let volume = 0;
   let totalReps = 0;
   for (const s of sets) {
+    totalReps += setReps(s);
+    // una serie con peso en otra unidad (no debería pasar: la hoja usa una sola) no entra en las cuentas de peso
+    if (s.weight && s.weight > 0 && s.weight_unit !== unit) continue;
     if (s.weight != null && s.weight > 0) topWeight = Math.max(topWeight ?? 0, s.weight);
     if (!bestSet || compareSets(s, bestSet) > 0) bestSet = s;
-    const est = estimate1RM(s.weight, s.reps);
+    const est = estimate1RM(s.weight, bestReps(s));
     if (est != null) e1rm = Math.max(e1rm ?? 0, est);
-    if (s.weight && s.reps) volume += s.weight * s.reps;
-    totalReps += s.reps ?? 0;
+    if (s.weight && s.reps) volume += s.weight * setReps(s);
   }
-  return { exerciseId, date, sets, topWeight, bestSet, e1rm, volume, totalReps, setCount: sets.length };
+  const unilateral = sets.some((s) => s.reps_right != null);
+  return { exerciseId, date, sets, unit, unilateral, topWeight, bestSet, e1rm, volume, totalReps, setCount: sets.length };
+}
+
+/**
+ * Sesiones comparables entre sí: las que están en `unit` (por defecto, la unidad de la última). Los
+ * récords, la mejor sesión, el gráfico y las tendencias se calculan solo con estas.
+ */
+export function sameUnit(sessions: Session[], unit?: WeightUnit): Session[] {
+  const u = unit ?? sessions[sessions.length - 1]?.unit;
+  return u && sessions.some((s) => s.unit !== u) ? sessions.filter((s) => s.unit === u) : sessions;
 }
 
 export interface TrainingIndex {
@@ -68,10 +114,16 @@ export function buildIndex(logs: SetLog[]): TrainingIndex {
   const byDate = new Map<ISODate, Session[]>();
   for (const rows of grouped.values()) {
     rows.sort((a, b) => a.set_number - b.set_number);
+    // ?? por las filas cacheadas antes de que existieran weight_unit / reps_right
     const s = makeSession(
       rows[0].exercise_id,
       rows[0].session_date,
-      rows.map((r) => ({ weight: r.weight, reps: r.reps })),
+      rows.map((r) => ({
+        weight: r.weight,
+        reps: r.reps,
+        weight_unit: r.weight_unit ?? 'kg',
+        reps_right: r.reps_right ?? null,
+      })),
     );
     push(byExercise, s.exerciseId, s);
     push(byDate, s.date, s);
@@ -110,31 +162,39 @@ export function lastSession(index: TrainingIndex, exerciseId: string): Session |
 // ── Récords ────────────────────────────────────────────────────────────────
 
 export interface ExerciseRecords {
+  /** unidad en la que están calculados los récords (los de otra unidad no se mezclan) */
+  unit: WeightUnit;
   bestE1rm: { value: number; date: ISODate } | null;
   heaviest: { set: SetInput; date: ISODate } | null;
   mostReps: { reps: number; date: ISODate } | null;
   bestVolume: { value: number; date: ISODate } | null;
   /** la sesión completa donde se hizo la mejor serie (ver bestSession) */
   best: Session | null;
+  /** todas las sesiones, en cualquier unidad */
   sessions: number;
   lastDate: ISODate | null;
 }
 
-export function exerciseRecords(sessions: Session[]): ExerciseRecords {
+/** Récords con las sesiones en `unit` (por defecto, la unidad de la última sesión). */
+export function exerciseRecords(sessions: Session[], unit?: WeightUnit): ExerciseRecords {
+  const u = unit ?? sessions[sessions.length - 1]?.unit ?? 'kg';
+  const comparable = sameUnit(sessions, u);
   const r: ExerciseRecords = {
+    unit: u,
     bestE1rm: null,
     heaviest: null,
     mostReps: null,
     bestVolume: null,
-    best: bestSession(sessions),
+    best: bestSession(comparable),
     sessions: sessions.length,
     lastDate: sessions.length ? sessions[sessions.length - 1].date : null,
   };
-  for (const s of sessions) {
+  for (const s of comparable) {
     if (s.e1rm != null && (!r.bestE1rm || s.e1rm >= r.bestE1rm.value)) r.bestE1rm = { value: s.e1rm, date: s.date };
     if (s.bestSet && (!r.heaviest || compareSets(s.bestSet, r.heaviest.set) >= 0)) r.heaviest = { set: s.bestSet, date: s.date };
     for (const set of s.sets) {
-      if (set.reps != null && (!r.mostReps || set.reps >= r.mostReps.reps)) r.mostReps = { reps: set.reps, date: s.date };
+      const reps = bestReps(set);
+      if (reps != null && (!r.mostReps || reps >= r.mostReps.reps)) r.mostReps = { reps, date: s.date };
     }
     if (s.volume > 0 && (!r.bestVolume || s.volume >= r.bestVolume.value)) r.bestVolume = { value: s.volume, date: s.date };
   }
@@ -179,46 +239,60 @@ export interface PR {
   kind: PRKind;
   value: number;
   previous: number;
+  unit: WeightUnit;
   set: SetInput | null;
 }
 
 /**
  * Récords de un ejercicio en orden cronológico. La primera sesión nunca es récord (no hay nada que
  * superar). Prioridad: más peso levantado > mejor 1RM estimado > más repeticiones (peso corporal).
+ * Los máximos se llevan por unidad: una sesión en ladrillos solo compite con las de ladrillos, y la
+ * primera en una unidad nueva tampoco es récord. Por lado cuenta el mejor lado.
  */
 export function detectPRs(sessions: Session[]): PR[] {
   const out: PR[] = [];
-  let maxW = 0;
-  let maxE = 0;
-  let maxR = 0;
-  sessions.forEach((s, i) => {
+  const maxByUnit = new Map<WeightUnit, { w: number; e: number; r: number; n: number }>();
+  for (const s of sessions) {
+    let max = maxByUnit.get(s.unit);
+    if (!max) maxByUnit.set(s.unit, (max = { w: 0, e: 0, r: 0, n: 0 }));
     const w = s.topWeight ?? 0;
     const e = s.e1rm ?? 0;
-    const r = Math.max(0, ...s.sets.map((x) => x.reps ?? 0));
+    const r = Math.max(0, ...s.sets.map((x) => bestReps(x) ?? 0));
     const bodyweight = w === 0;
-    if (i > 0) {
-      if (w > maxW && maxW > 0) {
+    const base = { exerciseId: s.exerciseId, date: s.date, unit: s.unit };
+    if (max.n > 0) {
+      if (w > max.w && max.w > 0) {
         const set =
           s.sets
             .filter((x) => x.weight === w)
             .sort(compareSets)
             .pop() ?? null;
-        out.push({ exerciseId: s.exerciseId, date: s.date, kind: 'peso', value: w, previous: maxW, set });
-      } else if (e > maxE + 0.25 && maxE > 0) {
+        out.push({ ...base, kind: 'peso', value: w, previous: max.w, set });
+      } else if (e > max.e + 0.25 && max.e > 0) {
         const set = s.sets.reduce<SetInput | null>((best, x) => {
-          const ex = estimate1RM(x.weight, x.reps) ?? 0;
-          return !best || ex > (estimate1RM(best.weight, best.reps) ?? 0) ? x : best;
+          const ex = estimate1RM(x.weight, bestReps(x)) ?? 0;
+          return !best || ex > (estimate1RM(best.weight, bestReps(best)) ?? 0) ? x : best;
         }, null);
-        out.push({ exerciseId: s.exerciseId, date: s.date, kind: '1rm', value: e, previous: maxE, set });
-      } else if (bodyweight && maxW === 0 && r > maxR && maxR > 0) {
-        out.push({ exerciseId: s.exerciseId, date: s.date, kind: 'reps', value: r, previous: maxR, set: null });
+        out.push({ ...base, kind: '1rm', value: e, previous: max.e, set });
+      } else if (bodyweight && max.w === 0 && r > max.r && max.r > 0) {
+        out.push({ ...base, kind: 'reps', value: r, previous: max.r, set: null });
       }
     }
-    maxW = Math.max(maxW, w);
-    maxE = Math.max(maxE, e);
-    maxR = Math.max(maxR, r);
-  });
+    max.w = Math.max(max.w, w);
+    max.e = Math.max(max.e, e);
+    max.r = Math.max(max.r, r);
+    max.n++;
+  }
   return out;
+}
+
+/**
+ * ¿La sesión `now` (todavía sin guardar) es récord contra las anteriores a su fecha en la misma
+ * unidad? Mismo criterio que detectPRs; si no hay sesiones previas en esa unidad, no lo es.
+ */
+export function newRecord(prior: Session[], now: Session): PR | null {
+  const before = prior.filter((s) => s.date < now.date);
+  return detectPRs([...before, now]).find((p) => p.date === now.date) ?? null;
 }
 
 export function recentPRs(index: TrainingIndex, limit = 10): PR[] {
@@ -233,6 +307,7 @@ export interface WeekStats {
   monday: ISODate;
   sessions: number;
   sets: number;
+  /** en kg: solo las sesiones en kg */
   volume: number;
   reps: number;
   byMuscle: Map<MuscleGroup | 'Otro', number>;
@@ -246,7 +321,7 @@ export function weekStats(index: TrainingIndex, exById: Map<string, Exercise>, m
     ws.sessions++;
     for (const s of day) {
       ws.sets += s.setCount;
-      ws.volume += s.volume;
+      if (s.unit === 'kg') ws.volume += s.volume; // el volumen en kg no suma las sesiones en ladrillos
       ws.reps += s.totalReps;
       const g = exById.get(s.exerciseId)?.muscle_group ?? 'Otro';
       ws.byMuscle.set(g, (ws.byMuscle.get(g) ?? 0) + s.setCount);

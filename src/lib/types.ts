@@ -65,19 +65,28 @@ export interface RoutineData {
   items: PlanItem[];
 }
 
+/** Unidad del peso de una serie: kg, o ladrillos/placas de máquinas que no dicen cuánto pesan. */
+export type WeightUnit = 'kg' | 'ladrillos';
+
 export interface SetLog {
   id: string;
   exercise_id: string;
   session_date: ISODate;
   set_number: number;
   weight: number | null;
+  /** en una serie por lado, las del lado izquierdo */
   reps: number | null;
+  weight_unit: WeightUnit;
+  /** reps del lado derecho en una serie por lado; null = ambos lados juntos */
+  reps_right: number | null;
   created_at?: string;
 }
 
 export interface SetInput {
   weight: number | null;
   reps: number | null;
+  weight_unit: WeightUnit;
+  reps_right: number | null;
 }
 
 /** Ítem de un día de rutina tal como lo edita/guarda el cliente (sin routine_id/day). */

@@ -28,6 +28,7 @@ export const qk = {
   exercises: ['exercises'] as const,
   routines: ['routines'] as const,
   logs: ['logs'] as const,
+  setOptions: ['schema', 'setOptions'] as const,
 };
 
 // ── Sin conexión ───────────────────────────────────────────────────────────
@@ -155,6 +156,9 @@ export const usePhasesQuery = () => useQuery({ queryKey: qk.phases, queryFn: () 
 export const useExercisesQuery = () => useQuery({ queryKey: qk.exercises, queryFn: () => api().listExercises() });
 export const useRoutinesQuery = () => useQuery({ queryKey: qk.routines, queryFn: () => api().listRoutineData() });
 export const useLogsQuery = () => useQuery({ queryKey: qk.logs, queryFn: () => api().listLogs() });
+
+/** false si falta la migración de ladrillos / series por lado; undefined mientras no se sabe. */
+export const useSetOptionsSupport = () => useQuery({ queryKey: qk.setOptions, queryFn: () => api().supportsSetOptions() }).data;
 
 const EMPTY: never[] = [];
 
@@ -441,6 +445,8 @@ export function useReplaceSets() {
               set_number: i + 1,
               weight: s.weight,
               reps: s.reps,
+              weight_unit: s.weight_unit,
+              reps_right: s.reps_right,
             })),
           ),
       );

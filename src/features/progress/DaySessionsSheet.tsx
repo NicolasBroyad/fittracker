@@ -16,7 +16,8 @@ export function DaySessionsSheet() {
   const exById = useExerciseMap();
   const sessions = data ? (index.byDate.get(data.date) ?? []) : [];
   const sets = sessions.reduce((a, s) => a + s.setCount, 0);
-  const volume = sessions.reduce((a, s) => a + s.volume, 0);
+  // volumen en kg: las sesiones en ladrillos no suman
+  const volume = sessions.reduce((a, s) => a + (s.unit === 'kg' ? s.volume : 0), 0);
 
   return (
     <Sheet

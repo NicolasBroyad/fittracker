@@ -1,4 +1,4 @@
-import type { SetInput } from './types';
+import type { SetInput, WeightUnit } from './types';
 
 const nf = new Map<string, Intl.NumberFormat>();
 
@@ -64,27 +64,43 @@ export function fmtTarget(sets: number | null, reps: string | null): string | nu
   return null;
 }
 
-function weightText(w: number | null): string {
-  return w && w > 0 ? `${fmtNumTrim(w)} kg` : 'PC';
+export const UNIT_SHORT: Record<WeightUnit, string> = { kg: 'kg', ladrillos: 'ladr.' };
+
+/** 80 → "80 kg"; 7.5 en ladrillos → "7,5 ladr." */
+export function fmtWeight(w: number, unit: WeightUnit = 'kg', decimals = 2): string {
+  return `${fmtNumTrim(w, decimals)} ${UNIT_SHORT[unit] ?? 'kg'}`;
+}
+
+function weightText(s: SetInput): string {
+  return s.weight && s.weight > 0 ? fmtWeight(s.weight, s.weight_unit) : 'PC';
+}
+
+/** "12", o "12/10" en una serie por lado (izquierda/derecha). */
+function repsText(s: SetInput): string {
+  const left = s.reps == null ? '–' : String(s.reps);
+  return s.reps_right == null ? left : `${left}/${s.reps_right}`;
 }
 
 /**
  * Resume una sesión agrupando series consecutivas con el mismo peso:
- * [85×6, 80×8, 80×7] → "85 kg × 6 · 80 kg × 8-7". "PC" = peso corporal.
+ * [85×6, 80×8, 80×7] → "85 kg × 6 · 80 kg × 8-7". "PC" = peso corporal. Por lado:
+ * "20 kg × 12/10 - 11/10" (con espacios, para que se lea cada serie).
  */
 export function fmtSets(sets: SetInput[]): string {
-  const groups: { w: number | null; reps: (number | null)[] }[] = [];
+  const groups: { first: SetInput; reps: string[]; sided: boolean }[] = [];
   for (const s of sets) {
     const last = groups[groups.length - 1];
-    if (last && last.w === s.weight) last.reps.push(s.reps);
-    else groups.push({ w: s.weight, reps: [s.reps] });
+    if (last && last.first.weight === s.weight && last.first.weight_unit === s.weight_unit) {
+      last.reps.push(repsText(s));
+      last.sided ||= s.reps_right != null;
+    } else groups.push({ first: s, reps: [repsText(s)], sided: s.reps_right != null });
   }
-  return groups.map((g) => `${weightText(g.w)} × ${g.reps.map((r) => (r == null ? '–' : r)).join('-')}`).join(' · ');
+  return groups.map((g) => `${weightText(g.first)} × ${g.reps.join(g.sided ? ' - ' : '-')}`).join(' · ');
 }
 
-/** Una serie suelta: "80 kg × 8" */
+/** Una serie suelta: "80 kg × 8", "7 ladr. × 12", "20 kg × 12/10" */
 export function fmtSet(s: SetInput): string {
-  return `${weightText(s.weight)} × ${s.reps ?? '–'}`;
+  return `${weightText(s)} × ${repsText(s)}`;
 }
 
 /** Para buscar sin importar mayúsculas ni tildes: "Bíceps" → "biceps". */

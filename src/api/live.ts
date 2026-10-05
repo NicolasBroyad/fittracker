@@ -1,6 +1,6 @@
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
 import type { Exercise, Phase, PlanDay, PlanItem, Routine, SetLog, WeightEntry, WeightGoal } from '@/lib/types';
-import { BackendError, type Api, type AuthUser } from './types';
+import { BackendError, needsSetOptions, setOptionsMissingError, type Api, type AuthUser } from './types';
 
 // URL y anon key son públicas por diseño: la seguridad real la da Row Level Security.
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? 'https://ogqbvooefjojaovxhhcx.supabase.co';
@@ -67,6 +67,7 @@ const toGoal = (r: Record<string, unknown>): WeightGoal => ({
   created_at: r.created_at as string,
 });
 
+// sin la migración 20261005010000 las filas no traen weight_unit / reps_right: kg y ambos lados
 const toLog = (r: Record<string, unknown>): SetLog => ({
   id: r.id as string,
   exercise_id: r.exercise_id as string,
@@ -74,8 +75,19 @@ const toLog = (r: Record<string, unknown>): SetLog => ({
   set_number: Number(r.set_number),
   weight: num(r.weight),
   reps: num(r.reps),
+  weight_unit: r.weight_unit === 'ladrillos' ? 'ladrillos' : 'kg',
+  reps_right: num(r.reps_right),
   created_at: r.created_at as string,
 });
+
+/**
+ * ¿routine_logs ya tiene weight_unit / reps_right? null = todavía no se sabe. Se averigua al leer
+ * las series; mientras falte la migración se vuelve a probar en cada lectura (así, al aplicarla, la
+ * app se entera sola).
+ */
+let setOptions: boolean | null = null;
+
+const isMissingColumn = (e: unknown) => e instanceof BackendError && e.code === '42703';
 
 async function userId(): Promise<string> {
   const { data, error } = await sb.auth.getSession();
@@ -339,22 +351,54 @@ export const liveApi: Api = {
   // ── Series ───────────────────────────────────────────────────────────────
 
   async listLogs() {
-    const rows = await fetchAll((from, to) =>
-      sb
-        .from('routine_logs')
-        .select('id, exercise_id, session_date, set_number, weight, reps, created_at')
-        .order('session_date')
-        .order('id')
-        .range(from, to),
-    );
-    return rows.map(toLog);
+    try {
+      const rows = await fetchAll((from, to) =>
+        sb
+          .from('routine_logs')
+          .select('id, exercise_id, session_date, set_number, weight, reps, created_at, weight_unit, reps_right')
+          .order('session_date')
+          .order('id')
+          .range(from, to),
+      );
+      setOptions = true;
+      return rows.map(toLog);
+    } catch (e) {
+      if (!isMissingColumn(e)) throw e;
+      setOptions = false;
+      const rows = await fetchAll((from, to) =>
+        sb
+          .from('routine_logs')
+          .select('id, exercise_id, session_date, set_number, weight, reps, created_at')
+          .order('session_date')
+          .order('id')
+          .range(from, to),
+      );
+      return rows.map(toLog);
+    }
+  },
+
+  async supportsSetOptions() {
+    if (setOptions !== true) {
+      const { error } = await sb.from('routine_logs').select('weight_unit, reps_right').limit(1);
+      if (error && error.code !== '42703') fail(error);
+      setOptions = !error;
+    }
+    return setOptions;
   },
 
   async replaceSessionSets(exerciseId, date, sets) {
+    // la función vieja ignora las claves que no conoce: guardaría ladrillos como kg sin avisar
+    if (needsSetOptions(sets) && !(await liveApi.supportsSetOptions())) throw setOptionsMissingError();
     const { data, error } = await sb.rpc('replace_session_sets', {
       p_exercise_id: exerciseId,
       p_session_date: date,
-      p_sets: sets,
+      p_sets: sets.map((s) => ({
+        weight: s.weight,
+        reps: s.reps,
+        // ?? por las cargas que quedaron en cola desde una versión anterior de la app
+        weight_unit: s.weight_unit ?? 'kg',
+        reps_right: s.reps_right ?? null,
+      })),
     });
     if (error) fail(error);
     return ((data ?? []) as Record<string, unknown>[]).map(toLog);

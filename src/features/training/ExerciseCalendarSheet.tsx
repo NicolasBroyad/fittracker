@@ -143,7 +143,7 @@ function SessionDetail({ session, isPR }: { session: Session; isPR: boolean }) {
           <div className="text-[14.5px] font-semibold">{fmtLong(session.date)}</div>
           <div className="text-[12.5px] text-muted">
             {session.setCount} {session.setCount === 1 ? 'serie' : 'series'}
-            {session.volume > 0 && ` · ${fmtVolume(session.volume)}`}
+            {session.volume > 0 && session.unit === 'kg' && ` · ${fmtVolume(session.volume)}`}
             {isPR && <span className="font-semibold text-warn"> · récord</span>}
           </div>
         </div>
