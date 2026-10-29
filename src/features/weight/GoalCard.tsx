@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from 'react';
 import { Check, Flag, Target, TrendingDown, TrendingUp } from 'lucide-react';
 import { toast } from 'sonner';
+import { PHASE_META } from '@/lib/constants';
 import { useAddGoal } from '@/api/hooks';
 import { useResetKey } from '@/app/hooks';
 import { addDays, diffDays, fmtDate, todayISO } from '@/lib/dates';
@@ -31,7 +32,7 @@ export function GoalCard({
   const [goalOpen, setGoalOpen] = useState(false);
   const [phasesOpen, setPhasesOpen] = useState(false);
   const today = todayISO();
-  const gp = goal ? goalProgress(goal, entries, today) : null;
+  const gp = goal ? goalProgress(goal, entries, phases, today) : null;
   const weeksIn = phase ? Math.floor(diffDays(today, phase.start_date) / 7) : 0;
 
   return (
@@ -90,6 +91,11 @@ export function GoalCard({
             <span className="font-semibold text-fg">{Math.round(gp.pct)}%</span>
             <span>Actual {fmtNum(gp.current, 1)}</span>
           </div>
+          <p className="mt-1 text-[12px] text-faint">
+            {gp.phase
+              ? `Cuenta desde el inicio de la ${PHASE_META[gp.phase.phase].label.toLowerCase()} (${fmtDate(gp.startDate)}): el inicio es tu promedio de esa semana.`
+              : `Cuenta desde el ${fmtDate(gp.startDate)}, cuando la definiste.`}
+          </p>
 
           <div className="mt-3.5 space-y-2">
             {gp.reached ? (

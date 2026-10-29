@@ -355,8 +355,9 @@ function TrainingWeekTile({ today }: { today: string }) {
 function GoalTile({ today }: { today: string }) {
   const entries = useEntries();
   const goal = activeGoal(useGoals());
-  const phase = currentPhase(usePhases(), today);
-  const gp = goal ? goalProgress(goal, entries, today) : null;
+  const phases = usePhases();
+  const phase = currentPhase(phases, today);
+  const gp = goal ? goalProgress(goal, entries, phases, today) : null;
   if (!gp && !phase) return null;
 
   return (

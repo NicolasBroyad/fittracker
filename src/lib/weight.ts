@@ -135,6 +135,10 @@ export function activeGoal(goals: WeightGoal[]): WeightGoal | null {
 
 export interface GoalProgress {
   start: number;
+  /** desde cuándo cuenta la meta: el inicio de la fase a la que pertenece, o el día en que se creó */
+  startDate: ISODate;
+  /** fase de volumen/definición a la que quedó atada la meta (si se creó durante una) */
+  phase: Phase | null;
   current: number;
   target: number;
   /** +1 si la meta es subir, −1 si es bajar */
@@ -149,12 +153,35 @@ export interface GoalProgress {
   projectedDate: ISODate | null;
 }
 
-export function goalProgress(goal: WeightGoal, sorted: WeightEntry[], today = todayISO()): GoalProgress | null {
+/**
+ * Una meta de peso queda atada a la fase de volumen o definición en curso cuando se creó: cuenta
+ * desde el inicio de esa fase aunque se haya cargado semanas después. Sin fase (o en
+ * mantenimiento), cuenta desde el día en que se creó.
+ */
+export function goalPhase(goal: WeightGoal, phases: Phase[]): Phase | null {
+  const p = phaseAt(phases, toISO(new Date(goal.created_at)));
+  return p && p.phase !== 'mantenimiento' ? p : null;
+}
+
+/**
+ * Peso de partida en una fecha: promedio de los registros de los 7 días que terminan ese día; si no
+ * hay ninguno, el de los 7 días siguientes; si tampoco, el último registro anterior.
+ */
+function weightAround(sorted: WeightEntry[], date: ISODate): number {
+  const before = avgEndingAt(sorted, date);
+  if (before != null) return before;
+  const after = sorted.filter((e) => e.date > date && e.date <= addDays(date, 7)).map((e) => e.weight);
+  if (after.length) return mean(after);
+  const prev = sorted.filter((e) => e.date <= date);
+  return prev.length ? prev[prev.length - 1].weight : sorted[0].weight;
+}
+
+export function goalProgress(goal: WeightGoal, sorted: WeightEntry[], phases: Phase[], today = todayISO()): GoalProgress | null {
   if (goal.target_weight == null || !sorted.length) return null;
   const target = goal.target_weight;
-  const createdOn = toISO(new Date(goal.created_at));
-  const before = sorted.filter((e) => e.date <= createdOn);
-  const start = before.length ? before[before.length - 1].weight : sorted[0].weight;
+  const phase = goalPhase(goal, phases);
+  const startDate = phase?.start_date ?? toISO(new Date(goal.created_at));
+  const start = weightAround(sorted, startDate);
   const latestDate = sorted[sorted.length - 1].date;
   const current = avgEndingAt(sorted, latestDate) ?? sorted[sorted.length - 1].weight;
 
@@ -184,6 +211,8 @@ export function goalProgress(goal: WeightGoal, sorted: WeightEntry[], today = to
 
   return {
     start,
+    startDate,
+    phase,
     current,
     target,
     direction,
