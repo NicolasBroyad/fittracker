@@ -58,7 +58,7 @@ Repo privado aparte `NicolasBroyad/fittracker-backups`: un workflow de GitHub Ac
 - **Vite + React 19 + TypeScript 7 + Tailwind CSS 4**. SPA estática (no hace falta SSR: todo es privado detrás de login y los datos vienen de Supabase desde el cliente), build rápido y deploy estático en Vercel.
 - **TanStack Query** (+ persistencia en `localStorage`, clave `ft-cache-v2`) para que la PWA abra instantáneamente con los datos cacheados y refresque en segundo plano; mutaciones **optimistas** en todo.
 - **Motion** (animaciones, reorder), **Vaul** (hojas inferiores arrastrables tipo iOS), **Recharts** (gráficos, cargado solo en las pantallas que lo usan), **Sonner** (toasts), **date-fns** (locale `es`), **lucide-react** (íconos).
-- **vite-plugin-pwa** (manifest + service worker con precache; las llamadas a Supabase no se cachean).
+- **vite-plugin-pwa** (manifest + service worker con precache; las llamadas a Supabase no se cachean). **Gotcha de actualizaciones**: el navegador solo busca un service worker nuevo al cargar la página de cero, y la PWA en el iPhone se retoma desde segundo plano casi siempre, así que un deploy podía no llegar nunca (pasó con el cambio de metas atadas a fases). `main.tsx` llama a `registration.update()` al volver a primer plano y cada hora; con `registerType: 'autoUpdate'` la versión nueva se activa y la página se recarga sola.
 - **Router propio** (`src/app/router.ts`, ~100 líneas sobre la History API): sabe si la navegación fue hacia adelante/atrás para animar en la dirección correcta y restaurar el scroll al volver. Se evitó una librería para no depender de APIs de versiones mayores nuevas.
 
 ## Estructura
