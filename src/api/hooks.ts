@@ -15,6 +15,7 @@ import type {
   RoutineData,
   SetInput,
   SetLog,
+  WatchDevice,
   WeightEntry,
   WeightGoal,
 } from '@/lib/types';
@@ -29,6 +30,7 @@ export const qk = {
   routines: ['routines'] as const,
   logs: ['logs'] as const,
   setOptions: ['schema', 'setOptions'] as const,
+  watches: ['watch', 'devices'] as const,
 };
 
 // ── Sin conexión ───────────────────────────────────────────────────────────
@@ -460,6 +462,46 @@ export function useReplaceSets() {
       qc.setQueryData<SetLog[]>(qk.logs, (old = []) =>
         old.filter((l) => !(l.exercise_id === v.exerciseId && l.session_date === v.date)).concat(rows),
       );
+    },
+  });
+}
+
+// ── Reloj Garmin ───────────────────────────────────────────────────────────
+
+/** Solo se pide con Ajustes abierto. Si falta la migración del reloj, el error trae missingSchema. */
+export const useWatchDevicesQuery = (enabled: boolean) =>
+  useQuery({ queryKey: qk.watches, queryFn: () => api().listWatchDevices(), enabled });
+
+const watchError = (e: unknown) =>
+  toast.error('No se pudo', {
+    description:
+      e instanceof BackendError && e.missingSchema ? 'Falta aplicar la migración del reloj en Supabase' : errorMessage(e),
+  });
+
+export function useConfirmWatchPairing() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { code: string; name: string }) => api().confirmWatchPairing(v.code, v.name),
+    onSuccess: (r) => {
+      if (r === 'ok') void qc.invalidateQueries({ queryKey: qk.watches });
+    },
+    onError: watchError,
+  });
+}
+
+export function useUnlinkWatch() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => api().unlinkWatch(id),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: qk.watches });
+      const prev = qc.getQueryData<WatchDevice[]>(qk.watches);
+      qc.setQueryData<WatchDevice[]>(qk.watches, (old = []) => old.filter((w) => w.id !== id));
+      return { prev };
+    },
+    onError: (e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(qk.watches, ctx.prev);
+      watchError(e);
     },
   });
 }

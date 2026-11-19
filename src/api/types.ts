@@ -11,6 +11,7 @@ import type {
   RoutineData,
   SetInput,
   SetLog,
+  WatchDevice,
   WeightEntry,
   WeightGoal,
 } from '@/lib/types';
@@ -69,7 +70,16 @@ export interface Api {
   replaceSessionSets(exerciseId: string, date: ISODate, sets: SetInput[]): Promise<SetLog[]>;
   /** ¿La base ya tiene la migración de ladrillos y series por lado (weight_unit / reps_right)? */
   supportsSetOptions(): Promise<boolean>;
+
+  // reloj Garmin
+  listWatchDevices(): Promise<WatchDevice[]>;
+  /** Vincula el reloj que muestra ese código de 6 dígitos. */
+  confirmWatchPairing(code: string, name: string): Promise<WatchPairResult>;
+  unlinkWatch(id: string): Promise<void>;
 }
+
+/** 'invalid' = código mal escrito o vencido; 'too_many' = demasiados intentos en la última hora. */
+export type WatchPairResult = 'ok' | 'invalid' | 'too_many';
 
 export const SET_OPTIONS_MISSING = 'set_options_missing';
 

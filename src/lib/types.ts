@@ -89,6 +89,14 @@ export interface SetInput {
   reps_right: number | null;
 }
 
+/** Reloj Garmin vinculado (la app del reloj vive en el repo fittracker-garmin). */
+export interface WatchDevice {
+  id: string;
+  name: string;
+  created_at: string;
+  last_seen_at: string | null;
+}
+
 /** Ítem de un día de rutina tal como lo edita/guarda el cliente (sin routine_id/day). */
 export interface PlanItemInput {
   exercise_id: string;

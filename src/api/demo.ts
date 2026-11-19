@@ -12,6 +12,7 @@ import type {
   Routine,
   RoutineData,
   SetLog,
+  WatchDevice,
   WeightEntry,
   WeightGoal,
 } from '@/lib/types';
@@ -257,6 +258,8 @@ function createDemoApiInner(): Api {
   let user: AuthUser | null = { id: 'demo-user', email: 'demo@fittracker.app' };
   const listeners = new Set<(u: AuthUser | null) => void>();
   let goalId = 10;
+  // reloj: el código 123456 vincula; cualquier otro es incorrecto
+  let watches: WatchDevice[] = [];
 
   return {
     mode: 'demo',
@@ -376,6 +379,18 @@ function createDemoApiInner(): Api {
       }));
       db.logs.push(...rows);
       return wait(rows);
+    },
+
+    listWatchDevices: () => wait(watches),
+    async confirmWatchPairing(code, name) {
+      if (code !== '123456') return wait('invalid' as const);
+      const now = new Date().toISOString();
+      watches.push({ id: uid(), name, created_at: now, last_seen_at: now });
+      return wait('ok' as const);
+    },
+    async unlinkWatch(id) {
+      watches = watches.filter((w) => w.id !== id);
+      await wait(null);
     },
   };
 }
