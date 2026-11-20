@@ -6,7 +6,7 @@ import { navigate } from '@/app/router';
 import { sheets } from '@/app/sheets';
 import { DAY_NAMES } from '@/lib/constants';
 import { addDays, dayOfWeek, fmtLong, fmtRelative, mondayOf, todayISO } from '@/lib/dates';
-import { fmtNum } from '@/lib/format';
+import { fmtKg } from '@/lib/format';
 import {
   assignWeek,
   dayPlan,
@@ -67,7 +67,7 @@ function WeightTodayCard({ today }: { today: string }) {
           <div className="min-w-0 flex-1">
             <div className="text-[13px] font-medium text-muted">Peso de hoy</div>
             <div className="font-display text-[34px] leading-none font-semibold tracking-tight tnum">
-              {fmtNum(todayEntry.weight, 1)}
+              {fmtKg(todayEntry.weight)}
               <span className="ml-1 text-[16px] text-muted">kg</span>
             </div>
           </div>
@@ -93,7 +93,7 @@ function WeightTodayCard({ today }: { today: string }) {
         <div className="min-w-0 flex-1">
           <div className="text-[16px] font-semibold">Registrá tu peso</div>
           <div className="text-[13px] text-muted">
-            {prev ? `Último: ${fmtNum(prev.weight, 1)} kg · ${fmtRelative(prev.date)}` : 'En ayunas, apenas te levantás'}
+            {prev ? `Último: ${fmtKg(prev.weight)} kg · ${fmtRelative(prev.date)}` : 'En ayunas, apenas te levantás'}
           </div>
         </div>
       </div>
@@ -297,7 +297,7 @@ function WeeklyWeightTile() {
     <Card onClick={() => navigate('/peso')} className="flex flex-col justify-between">
       <div className="text-[12.5px] font-medium text-muted">Promedio 7 días</div>
       <div className="mt-1 font-display text-[26px] leading-none font-semibold tnum">
-        {avg != null ? fmtNum(avg, 1) : '–'}
+        {avg != null ? fmtKg(avg) : '–'}
         <span className="ml-0.5 text-[13px] text-muted">kg</span>
       </div>
       <div className="mt-2 flex items-end justify-between gap-2">
@@ -375,14 +375,14 @@ function GoalTile({ today }: { today: string }) {
         <>
           <div className="mt-3 flex items-baseline justify-between gap-3">
             <div className="text-[15px]">
-              Meta <b className="tnum">{fmtNum(gp.target, 1)} kg</b>
+              Meta <b className="tnum">{fmtKg(gp.target)} kg</b>
               {goal?.target_date && <span className="text-muted"> · {fmtRelative(goal.target_date)}</span>}
             </div>
             <span className="text-[14px] font-semibold tnum">{Math.round(gp.pct)}%</span>
           </div>
           <ProgressBar value={gp.pct} className="mt-2" />
           <div className="mt-2 text-[12.5px] text-muted">
-            {gp.reached ? '¡Meta alcanzada!' : `Faltan ${fmtNum(Math.abs(gp.target - gp.current), 1)} kg`}
+            {gp.reached ? '¡Meta alcanzada!' : `Faltan ${fmtKg(Math.abs(gp.target - gp.current))} kg`}
             {gp.onTrack != null && !gp.reached && (
               <span className={gp.onTrack ? 'text-good' : 'text-bad'}>
                 {' '}

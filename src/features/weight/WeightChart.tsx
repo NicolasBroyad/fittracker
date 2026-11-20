@@ -28,7 +28,7 @@ import {
   toISO,
   todayISO,
 } from '@/lib/dates';
-import { fmtNum } from '@/lib/format';
+import { fmtKg, fmtNum } from '@/lib/format';
 import type { Phase, PhaseKind, WeightEntry, WeightGoal } from '@/lib/types';
 import { movingAverage, rangeStart, weeklyAverages, type ChartRange } from '@/lib/weight';
 import { cn } from '@/ui/cn';
@@ -319,7 +319,7 @@ export function WeightChart({ entries, phases, goal }: { entries: WeightEntry[];
                   strokeDasharray="5 5"
                   ifOverflow="extendDomain"
                   label={{
-                    value: `Meta ${fmtNum(model.target, 1)}`,
+                    value: `Meta ${fmtKg(model.target)}`,
                     position: 'insideTopRight',
                     fill: c.muted,
                     fontSize: 11,
@@ -388,13 +388,13 @@ function ChartTooltip({ active, payload, mode }: { active?: boolean; payload?: {
       {mode === 'diario' ? (
         <>
           <div className="text-muted">{fmtDate(p.date)}</div>
-          {p.weight != null && <div className="font-semibold tnum">{fmtNum(p.weight, 1)} kg</div>}
-          {p.ma != null && <div className="text-muted tnum">Prom. 7 días {fmtNum(p.ma, 1)}</div>}
+          {p.weight != null && <div className="font-semibold tnum">{fmtKg(p.weight)} kg</div>}
+          {p.ma != null && <div className="text-muted tnum">Prom. 7 días {fmtKg(p.ma)}</div>}
         </>
       ) : (
         <>
           <div className="text-muted">Semana {fmtWeekRange(p.date)}</div>
-          {p.avg != null && <div className="font-semibold tnum">{fmtNum(p.avg, 2)} kg</div>}
+          {p.avg != null && <div className="font-semibold tnum">{fmtKg(p.avg)} kg</div>}
           {p.count != null && (
             <div className="text-muted">
               {p.count} {p.count === 1 ? 'registro' : 'registros'}

@@ -21,7 +21,7 @@ import {
   mondayOf,
   todayISO,
 } from '@/lib/dates';
-import { fmtNum, fmtPct, fmtSet, fmtVolume, fmtWeight, UNIT_SHORT } from '@/lib/format';
+import { UNIT_SHORT, fmtNum, fmtNumTrim, fmtPct, fmtSet, fmtVolume, fmtWeight } from '@/lib/format';
 import {
   activeRoutine,
   dayPlan,
@@ -376,7 +376,7 @@ function PRsCard({ index, exById }: { index: TrainingIndex; exById: Map<string, 
             pr.kind === 'peso'
               ? pr.set
                 ? fmtSet(pr.set)
-                : fmtWeight(pr.value, pr.unit, 1)
+                : fmtWeight(pr.value, pr.unit)
               : pr.kind === '1rm'
                 ? `1RM est. ${fmtNum(pr.value, 1)} ${UNIT_SHORT[pr.unit]}`
                 : `${pr.value} reps`;
@@ -396,7 +396,10 @@ function PRsCard({ index, exById }: { index: TrainingIndex; exById: Map<string, 
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[15px] font-medium">{ex?.name ?? 'Ejercicio'}</div>
                 <div className="text-[13px] text-muted tnum">
-                  {label} <span className="text-good">(+{fmtNum(diff, pr.kind === 'reps' ? 0 : 1)})</span>
+                  {label}{' '}
+                  <span className="text-good">
+                    (+{pr.kind === 'peso' ? fmtNumTrim(diff) : fmtNum(diff, pr.kind === 'reps' ? 0 : 1)})
+                  </span>
                 </div>
               </div>
               <span className="shrink-0 text-[12.5px] text-muted">{fmtDate(pr.date)}</span>

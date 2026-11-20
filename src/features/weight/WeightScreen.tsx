@@ -5,7 +5,7 @@ import { Page } from '@/app/Page';
 import { navigate } from '@/app/router';
 import { sheets } from '@/app/sheets';
 import { addDays, fmtMonth, fmtRelative, todayISO } from '@/lib/dates';
-import { fmtNum } from '@/lib/format';
+import { fmtKg } from '@/lib/format';
 import { activeGoal, avgEndingAt, currentPhase, monthlyAverages, trendPerDay } from '@/lib/weight';
 import { Button, IconButton } from '@/ui/button';
 import { Card, CardTitle, Delta, Empty, Skeleton } from '@/ui/display';
@@ -64,7 +64,7 @@ export function WeightScreen() {
               <div>
                 <div className="text-[13px] font-medium text-muted">Último registro · {fmtRelative(latest.date)}</div>
                 <div className="mt-1 font-display text-[48px] leading-none font-semibold tracking-tight tnum">
-                  {fmtNum(latest.weight, 1)}
+                  {fmtKg(latest.weight)}
                   <span className="ml-1.5 text-[20px] font-semibold text-muted">kg</span>
                 </div>
               </div>
@@ -80,7 +80,7 @@ export function WeightScreen() {
               )}
             </div>
             <div className="mt-4 grid grid-cols-3 gap-3 border-t border-line pt-3.5">
-              <HeroStat label="Prom. 7 días" value={stats?.avg7 != null ? fmtNum(stats.avg7, 1) : '–'} />
+              <HeroStat label="Prom. 7 días" value={stats?.avg7 != null ? fmtKg(stats.avg7) : '–'} />
               <HeroStat label="vs semana ant." value={<Delta value={stats?.weekChange} />} />
               <HeroStat
                 label="Tendencia"
@@ -162,7 +162,7 @@ function MonthlyCard({ entries }: { entries: ReturnType<typeof useEntries> }) {
                 />
               </div>
               <div className="w-[64px] shrink-0 text-right">
-                <div className="text-[15px] font-semibold tnum">{fmtNum(m.avg, 1)}</div>
+                <div className="text-[15px] font-semibold tnum">{fmtKg(m.avg)}</div>
                 <div className="text-[12px]">
                   {prev ? <Delta value={m.avg - prev.avg} /> : <span className="text-faint">—</span>}
                 </div>
