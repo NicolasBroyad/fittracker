@@ -7,7 +7,7 @@
 --      secreto largo que guarda;
 --   2. el usuario escribe el código en la web (Ajustes → Reloj Garmin) → watch_pair_confirm(), que
 --      corre con su sesión y crea el reloj en watch_devices;
---   3. el reloj consulta watch_pair_status(secreto) hasta que diga 'linked'.
+--   3. el reloj consulta watch_pair_status(secreto) hasta que diga { s: 'linked' }.
 -- Desde ahí el reloj usa el secreto como token en watch_routine / watch_save_sets (security definer:
 -- el usuario sale del token, no de auth.uid()). En la base solo queda el sha256 del secreto.
 -- Desvincular = borrar la fila de watch_devices (lo hace la web con RLS).
@@ -106,9 +106,12 @@ begin
 end;
 $$;
 
--- La llama el reloj mientras muestra el código: 'linked', 'pending' o 'expired'.
-create or replace function public.watch_pair_status(p_secret text)
-returns text
+-- La llama el reloj mientras muestra el código: { s: 'linked' | 'pending' | 'expired' }.
+-- Devuelve un objeto y no un texto suelto porque Connect IQ no acepta un string JSON como cuerpo
+-- de la respuesta (makeWebRequest da -400). El drop es por si quedó la versión que devolvía text.
+drop function if exists public.watch_pair_status(text);
+create function public.watch_pair_status(p_secret text)
+returns jsonb
 language plpgsql
 security definer
 set search_path = public
@@ -118,12 +121,12 @@ declare
 begin
   if exists (select 1 from public.watch_devices where token_hash = v_hash) then
     delete from public.watch_pairings where token_hash = v_hash;
-    return 'linked';
+    return jsonb_build_object('s', 'linked');
   end if;
   if exists (select 1 from public.watch_pairings where token_hash = v_hash and expires_at >= now()) then
-    return 'pending';
+    return jsonb_build_object('s', 'pending');
   end if;
-  return 'expired';
+  return jsonb_build_object('s', 'expired');
 end;
 $$;
 

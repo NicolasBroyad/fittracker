@@ -254,7 +254,7 @@ console.log('\nReloj Garmin');
   const start = await asAnon(() => db.query(`select public.watch_pair_start() as j`));
   const { code, secret } = start.rows[0].j;
   ok(/^\d{6}$/.test(code) && secret.length >= 32, 'watch_pair_start (sin sesión) da código de 6 dígitos y secreto');
-  const status = async (s) => (await asAnon(() => db.query(`select public.watch_pair_status($1) as s`, [s]))).rows[0].s;
+  const status = async (s) => (await asAnon(() => db.query(`select public.watch_pair_status($1) as j`, [s]))).rows[0].j.s;
   ok((await status(secret)) === 'pending', 'queda pendiente hasta que se confirme');
   const routine = async (s, today) =>
     (await asAnon(() => db.query(`select public.watch_routine($1, $2::date) as j`, [s, today]))).rows[0].j;
