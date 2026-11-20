@@ -15,6 +15,8 @@ import type {
   RoutineData,
   SetInput,
   SetLog,
+  WatchActivity,
+  WatchDay,
   WatchDevice,
   WeightEntry,
   WeightGoal,
@@ -31,6 +33,8 @@ export const qk = {
   logs: ['logs'] as const,
   setOptions: ['schema', 'setOptions'] as const,
   watches: ['watch', 'devices'] as const,
+  watchDays: ['watch', 'days'] as const,
+  watchActivities: ['watch', 'activities'] as const,
 };
 
 // ── Sin conexión ───────────────────────────────────────────────────────────
@@ -504,4 +508,16 @@ export function useUnlinkWatch() {
       watchError(e);
     },
   });
+}
+
+// ── Lo que mide el reloj ───────────────────────────────────────────────────
+
+/** Pasos, calorías, etc. por día que subió el reloj (vacío si nunca subió nada). */
+export function useWatchDays(): WatchDay[] {
+  return useQuery({ queryKey: qk.watchDays, queryFn: () => api().listWatchDays() }).data ?? EMPTY;
+}
+
+/** Actividades grabadas en el reloj, de la más nueva a la más vieja. */
+export function useWatchActivities(): WatchActivity[] {
+  return useQuery({ queryKey: qk.watchActivities, queryFn: () => api().listWatchActivities() }).data ?? EMPTY;
 }

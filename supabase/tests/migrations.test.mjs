@@ -349,6 +349,106 @@ console.log('\nReloj Garmin');
   for (let i = 0; i < 11; i++) last = await confirm(B, '999999');
   ok(last === 'too_many', 'después de 10 códigos mal escritos en una hora no deja seguir probando');
 
+  // peso desde el reloj
+  const saveW = async (s, date, w) =>
+    (await asAnon(() => db.query(`select public.watch_save_weight($1, $2::date, $3) as j`, [s, date, w]))).rows[0].j;
+  ok((await saveW(secret, '2026-10-30', 15)).err === 'weight', 'watch_save_weight rechaza pesos fuera de 20-400');
+  ok((await saveW('otro-secreto', '2026-10-30', 80)).err === 'unlinked', 'y con un token inválido no guarda');
+  ok((await saveW(secret, '2026-10-30', 80.4)).ok === true, 'watch_save_weight guarda el peso del día');
+  const wRow = async () =>
+    (await db.query(`select user_id, weight::float8 w, note from public.weight_entries where date = '2026-10-30'`)).rows;
+  const wLog = async () =>
+    (
+      await db.query(
+        `select user_id, action, previous_weight::float8 pw, new_weight::float8 nw, new_note from public.weight_entries_log where entry_date = '2026-10-30' order by id`,
+      )
+    ).rows;
+  let wr = await wRow();
+  ok(wr.length === 1 && wr[0].user_id === A && wr[0].w === 80.4 && wr[0].note === '', 'queda a nombre de A, sin nota');
+  ok(
+    (await wLog()).length === 1 && (await wLog())[0].action === 'created' && (await wLog())[0].user_id === A,
+    'y en el historial como alta',
+  );
+  await saveW(secret, '2026-10-30', 80.4);
+  ok((await wLog()).length === 1, 'reintentar el mismo peso no agrega historial');
+  await db.query(`update public.weight_entries set note = 'ayuno' where date = '2026-10-30'`);
+  await saveW(secret, '2026-10-30', 80.1);
+  wr = await wRow();
+  const lg = await wLog();
+  ok(
+    wr[0].w === 80.1 &&
+      wr[0].note === 'ayuno' &&
+      lg.length === 2 &&
+      lg[1].action === 'updated' &&
+      lg[1].pw === 80.4 &&
+      lg[1].new_note === 'ayuno',
+    'corregirlo actualiza el peso, conserva la nota y queda como edición',
+  );
+  const jw = await routine(secret, '2026-10-30');
+  ok(
+    Array.isArray(jw.w) && jw.w.length >= 1 && jw.w[jw.w.length - 1][0] === '2026-10-30' && jw.w[jw.w.length - 1][1] === 80.1,
+    'watch_routine trae los últimos pesos (w)',
+  );
+  ok(Array.isArray((await routine(secret, '2026-09-25')).w), 'w también viene en días sin peso');
+
+  // datos de actividad del reloj
+  const saveH = async (s, days, acts) =>
+    (
+      await asAnon(() =>
+        db.query(`select public.watch_save_health($1, $2::jsonb, $3::jsonb) as j`, [
+          s,
+          JSON.stringify(days),
+          JSON.stringify(acts),
+        ]),
+      )
+    ).rows[0].j;
+  const h1 = await saveH(
+    secret,
+    [
+      { date: '2026-10-29', steps: 9000, step_goal: 8000, calories: 2400, distance_m: 7000, active_minutes: 45 },
+      { date: '2026-10-30', steps: 3000, calories: 1200, resting_hr: 52 },
+    ],
+    [{ start: 1761832800, sport: 1, duration_s: 1800, distance_m: 5000 }],
+  );
+  ok(h1.ok === true && h1.days === 2 && h1.activities === 1, 'watch_save_health guarda días y actividades');
+  await saveH(
+    secret,
+    [{ date: '2026-10-30', steps: 6500 }],
+    [{ start: 1761832800, sport: 1, duration_s: 1850, distance_m: 5100 }],
+  );
+  const dd = (await db.query(`select steps, calories, resting_hr, user_id from public.watch_daily where date = '2026-10-30'`))
+    .rows[0];
+  ok(
+    dd.steps === 6500 && dd.calories === 1200 && dd.resting_hr === 52 && dd.user_id === A,
+    'actualizar un día no borra lo que no vino',
+  );
+  const aa = (await db.query(`select count(*)::int n, max(duration_s) d from public.watch_activities`)).rows[0];
+  ok(aa.n === 1 && aa.d === 1850, 'una actividad no se duplica al volver a subirla');
+  ok(
+    (await saveH('otro-secreto', [{ date: '2026-10-31', steps: 1 }], [])).err === 'unlinked',
+    'token inválido no sube actividad',
+  );
+  const seenA = await as(A, () =>
+    db.query(`select (select count(*) from public.watch_daily)::int d, (select count(*) from public.watch_activities)::int a`),
+  );
+  const seenB = await as(B, () =>
+    db.query(`select (select count(*) from public.watch_daily)::int d, (select count(*) from public.watch_activities)::int a`),
+  );
+  const seenAnon = await asAnon(() =>
+    db.query(`select (select count(*) from public.watch_daily)::int d, (select count(*) from public.watch_activities)::int a`),
+  );
+  ok(
+    seenA.rows[0].d === 2 && seenA.rows[0].a === 1 && seenB.rows[0].d === 0 && seenB.rows[0].a === 0 && seenAnon.rows[0].d === 0,
+    'cada usuario ve solo su actividad y sin sesión no se ve nada',
+  );
+  let anonWeights = false;
+  try {
+    await asAnon(() => db.query(`select public.watch_weights($1, '2026-10-30')`, [A]));
+  } catch {
+    anonWeights = true;
+  }
+  ok(anonWeights, 'watch_weights no se puede llamar desde afuera');
+
   // desvincular desde la web
   const del = await as(A, () => db.query(`delete from public.watch_devices returning id`));
   ok(del.rows.length === 1 && (await routine(secret, '2026-09-25')).err === 'unlinked', 'desvinculado, el token deja de servir');

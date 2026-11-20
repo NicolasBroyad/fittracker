@@ -1,5 +1,17 @@
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
-import type { Exercise, Phase, PlanDay, PlanItem, Routine, SetLog, WatchDevice, WeightEntry, WeightGoal } from '@/lib/types';
+import type {
+  Exercise,
+  Phase,
+  PlanDay,
+  PlanItem,
+  Routine,
+  SetLog,
+  WatchActivity,
+  WatchDay,
+  WatchDevice,
+  WeightEntry,
+  WeightGoal,
+} from '@/lib/types';
 import { BackendError, needsSetOptions, setOptionsMissingError, type Api, type AuthUser, type WatchPairResult } from './types';
 
 // URL y anon key son públicas por diseño: la seguridad real la da Row Level Security.
@@ -421,5 +433,38 @@ export const liveApi: Api = {
   async unlinkWatch(id) {
     const { error } = await sb.from('watch_devices').delete().eq('id', id);
     if (error) fail(error);
+  },
+
+  // lo que mide el reloj: es un extra, así que sin la migración no rompe nada (lista vacía)
+  async listWatchDays() {
+    try {
+      const rows = await fetchAll((from, to) =>
+        sb
+          .from('watch_daily')
+          .select('date, steps, step_goal, calories, distance_m, active_minutes, resting_hr, updated_at')
+          .order('date')
+          .range(from, to),
+      );
+      return rows as WatchDay[];
+    } catch (e) {
+      if (e instanceof BackendError && e.missingSchema) return [];
+      throw e;
+    }
+  },
+
+  async listWatchActivities() {
+    try {
+      const rows = await fetchAll((from, to) =>
+        sb
+          .from('watch_activities')
+          .select('start_time, sport, duration_s, distance_m')
+          .order('start_time', { ascending: false })
+          .range(from, to),
+      );
+      return rows as WatchActivity[];
+    } catch (e) {
+      if (e instanceof BackendError && e.missingSchema) return [];
+      throw e;
+    }
   },
 };
