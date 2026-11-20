@@ -424,6 +424,22 @@ console.log('\nReloj Garmin');
   );
   const aa = (await db.query(`select count(*)::int n, max(duration_s) d from public.watch_activities`)).rows[0];
   ok(aa.n === 1 && aa.d === 1850, 'una actividad no se duplica al volver a subirla');
+  // el reloj manda el inicio en la época de Garmin (desde 1989-12-31): se pasa a Unix
+  const garmin = 1763510400 - 631065600; // 2025-11-19 00:00 UTC
+  await saveH(secret, [], [{ start: garmin, sport: 10, duration_s: 3600 }]);
+  const ga = (await db.query(`select (start_time at time zone 'UTC')::text t from public.watch_activities where sport = 10`))
+    .rows;
+  ok(ga.length === 1 && ga[0].t.startsWith('2025-11-19'), 'el inicio en época de Garmin se guarda con la fecha real');
+  // las ya guardadas con la fecha corrida se corrigen al aplicar la migración
+  await db.query(`insert into public.watch_activities (user_id, start_time, sport) values ($1, to_timestamp($2), 4)`, [
+    A,
+    garmin + 7200,
+  ]);
+  await db.exec(readFileSync(`${MIG}/20261119020000_watch_activity_epoch.sql`, 'utf8'));
+  const fixed = (await db.query(`select (start_time at time zone 'UTC')::text t from public.watch_activities where sport = 4`))
+    .rows;
+  ok(fixed.length === 1 && fixed[0].t.startsWith('2025-11-19 02'), 'la migración corrige las actividades viejas');
+  await db.query(`delete from public.watch_activities where sport in (4, 10)`);
   ok(
     (await saveH('otro-secreto', [{ date: '2026-10-31', steps: 1 }], [])).err === 'unlinked',
     'token inválido no sube actividad',
