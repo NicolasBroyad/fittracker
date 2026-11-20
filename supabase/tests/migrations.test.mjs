@@ -24,6 +24,15 @@ const as = async (uid, fn) => {
     await db.exec(`reset role;`);
   }
 };
+// sin sesión, como el reloj con la anon key
+const asAnon = async (fn) => {
+  await db.exec(`set role anon; select set_config('request.jwt.claim.sub', '', false);`);
+  try {
+    return await fn();
+  } finally {
+    await db.exec(`reset role;`);
+  }
+};
 
 // stub del entorno de Supabase
 await db.exec(`
@@ -31,8 +40,9 @@ await db.exec(`
   create table auth.users (id uuid primary key);
   create function auth.uid() returns uuid language sql stable as $$ select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
   create role authenticated;
-  grant usage on schema auth to authenticated;
-  grant execute on function auth.uid() to authenticated;
+  create role anon;
+  grant usage on schema auth to authenticated, anon;
+  grant execute on function auth.uid() to authenticated, anon;
   insert into auth.users values ('${A}'), ('${B}');
 `);
 
@@ -69,10 +79,10 @@ try {
 }
 ok(rerun, 'las migraciones posteriores se pueden volver a aplicar sin error');
 
-// Supabase da estos permisos por defecto a "authenticated"
-await db.exec(`grant usage on schema public to authenticated;
-  grant all on all tables in schema public to authenticated;
-  grant all on all sequences in schema public to authenticated;`);
+// Supabase da estos permisos por defecto a "authenticated" y "anon" (RLS es lo que protege)
+await db.exec(`grant usage on schema public to authenticated, anon;
+  grant all on all tables in schema public to authenticated, anon;
+  grant all on all sequences in schema public to authenticated, anon;`);
 
 console.log('\nBackfill');
 const r = await db.query(`select user_id, name, is_active from public.routines`);
@@ -236,6 +246,113 @@ await as(B, async () => {
   const stillActive = await as(A, () => db.query(`select is_active from public.routines where id = $1`, [rid]));
   ok(stillActive.rows[0].is_active === true, 'set_active_routine de B no afecta a A');
 });
+
+console.log('\nReloj Garmin');
+{
+  const EX1 = 'aaaaaaaa-0000-0000-0000-000000000001'; // Press banca (puesto 2 del lunes)
+  const EX2 = 'aaaaaaaa-0000-0000-0000-000000000002'; // Press inclinado (puesto 1, con series en ladrillos/por lado)
+  const start = await asAnon(() => db.query(`select public.watch_pair_start() as j`));
+  const { code, secret } = start.rows[0].j;
+  ok(/^\d{6}$/.test(code) && secret.length >= 32, 'watch_pair_start (sin sesión) da código de 6 dígitos y secreto');
+  const status = async (s) => (await asAnon(() => db.query(`select public.watch_pair_status($1) as j`, [s]))).rows[0].j.s;
+  ok((await status(secret)) === 'pending', 'queda pendiente hasta que se confirme');
+  const routine = async (s, today) =>
+    (await asAnon(() => db.query(`select public.watch_routine($1, $2::date) as j`, [s, today]))).rows[0].j;
+  ok((await routine(secret, '2026-09-25')).err === 'unlinked', 'sin confirmar no da datos');
+
+  let anonConfirm = false;
+  try {
+    await asAnon(() => db.query(`select public.watch_pair_confirm($1)`, [code]));
+  } catch {
+    anonConfirm = true;
+  }
+  ok(anonConfirm, 'sin sesión no se puede confirmar un código');
+  const confirm = async (uid, c) =>
+    (await as(uid, () => db.query(`select public.watch_pair_confirm($1, 'Forerunner 55') as s`, [c]))).rows[0].s;
+  ok((await confirm(A, code === '000000' ? '000001' : '000000')) === 'invalid', 'un código incorrecto no vincula');
+  ok((await confirm(A, code)) === 'ok', 'A vincula el reloj con el código');
+  ok((await confirm(B, code)) === 'invalid', 'el código no sirve dos veces');
+  ok((await status(secret)) === 'linked', 'el reloj se entera de que quedó vinculado');
+  const dev = await db.query(`select user_id, name, token_hash from public.watch_devices`);
+  ok(
+    dev.rows.length === 1 &&
+      dev.rows[0].user_id === A &&
+      dev.rows[0].name === 'Forerunner 55' &&
+      dev.rows[0].token_hash !== secret,
+    'en la base queda el reloj de A con el hash del secreto, no el secreto',
+  );
+
+  const j = await routine(secret, '2026-09-25');
+  const e2 = j.e.findIndex((x) => x[0] === EX2);
+  const e1 = j.e.findIndex((x) => x[0] === EX1);
+  ok(j.r === 'Mi rutina' && j.e.length === 2 && j.d.length === 7, 'watch_routine trae la rutina activa con los 7 días');
+  ok(
+    j.d[0][0] === 'Pecho y tríceps' &&
+      j.d[0][2].length === 2 &&
+      j.d[0][2][0][0][0] === e2 &&
+      j.d[0][2][0][0][1] === 4 &&
+      j.d[0][2][0][0][2] === '6-8',
+    'el lunes con sus puestos en orden y el objetivo de cada uno',
+  );
+  const prev2 = j.p.find((x) => x[0] === e2);
+  ok(
+    prev2 && prev2[1] === '2026-09-22' && prev2[2] === 'ladrillos' && prev2[3][0][0] === 7.5 && prev2[3][0][2] === 10,
+    'trae la sesión anterior con unidad y reps por lado',
+  );
+  ok(j.h.length === 0, 'sin series cargadas ese día');
+
+  const save = async (s, ex, date, sets) =>
+    (
+      await asAnon(() =>
+        db.query(`select public.watch_save_sets($1, $2, $3::date, $4::jsonb) as j`, [s, ex, date, JSON.stringify(sets)]),
+      )
+    ).rows[0].j;
+  const sets = [
+    { weight: 80, reps: 8, weight_unit: 'kg', reps_right: null },
+    { weight: 80, reps: 7, weight_unit: 'kg', reps_right: null },
+  ];
+  ok((await save(secret, EX1, '2026-09-25', sets)).ok === 2, 'watch_save_sets guarda las series');
+  ok((await save(secret, EX1, '2026-09-25', sets)).ok === 2, 'y reintentar no las duplica');
+  const saved = await db.query(`select user_id, weight_unit from public.routine_logs where session_date = '2026-09-25'`);
+  ok(saved.rows.length === 2 && saved.rows.every((x) => x.user_id === A && x.weight_unit === 'kg'), 'quedan a nombre de A');
+  const j2 = await routine(secret, '2026-09-25');
+  ok(j2.h.length === 1 && j2.h[0][0] === e1 && j2.h[0][2].length === 2, 'watch_routine muestra lo cargado hoy');
+  ok((await save('otro-secreto', EX1, '2026-09-26', sets)).err === 'unlinked', 'un token inválido no guarda nada');
+
+  const bEx = await as(B, () => db.query(`insert into public.routine_exercises (name) values ('De B') returning id`));
+  ok(
+    (await save(secret, bEx.rows[0].id, '2026-09-25', sets)).err === 'exercise',
+    'el reloj de A no puede cargar series en ejercicios de B',
+  );
+
+  const anonSees = await asAnon(() => db.query(`select count(*)::int n from public.watch_devices`));
+  const anonPairs = await asAnon(() => db.query(`select count(*)::int n from public.watch_pairings`));
+  ok(anonSees.rows[0].n === 0 && anonPairs.rows[0].n === 0, 'sin sesión no se ven relojes ni códigos');
+  let anonUser = false;
+  try {
+    await asAnon(() => db.query(`select public.watch_user($1)`, [secret]));
+  } catch {
+    anonUser = true;
+  }
+  ok(anonUser, 'watch_user no se puede llamar desde afuera');
+  const bSees = await as(B, () => db.query(`select count(*)::int n from public.watch_devices`));
+  const aSees = await as(A, () => db.query(`select count(*)::int n from public.watch_devices`));
+  ok(bSees.rows[0].n === 0 && aSees.rows[0].n === 1, 'cada usuario ve solo sus relojes');
+
+  // código vencido
+  const s2 = (await asAnon(() => db.query(`select public.watch_pair_start() as j`))).rows[0].j;
+  await db.query(`update public.watch_pairings set expires_at = now() - interval '1 minute' where code = $1`, [s2.code]);
+  ok((await confirm(A, s2.code)) === 'invalid' && (await status(s2.secret)) === 'expired', 'un código vencido no vincula');
+
+  // intentos
+  let last = '';
+  for (let i = 0; i < 11; i++) last = await confirm(B, '999999');
+  ok(last === 'too_many', 'después de 10 códigos mal escritos en una hora no deja seguir probando');
+
+  // desvincular desde la web
+  const del = await as(A, () => db.query(`delete from public.watch_devices returning id`));
+  ok(del.rows.length === 1 && (await routine(secret, '2026-09-25')).err === 'unlinked', 'desvinculado, el token deja de servir');
+}
 
 console.log(fails ? `\n${fails} FALLAS` : '\nTodo OK');
 process.exit(fails ? 1 : 0);

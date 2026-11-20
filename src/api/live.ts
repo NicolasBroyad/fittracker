@@ -1,6 +1,6 @@
 import { createClient, type PostgrestError } from '@supabase/supabase-js';
-import type { Exercise, Phase, PlanDay, PlanItem, Routine, SetLog, WeightEntry, WeightGoal } from '@/lib/types';
-import { BackendError, needsSetOptions, setOptionsMissingError, type Api, type AuthUser } from './types';
+import type { Exercise, Phase, PlanDay, PlanItem, Routine, SetLog, WatchDevice, WeightEntry, WeightGoal } from '@/lib/types';
+import { BackendError, needsSetOptions, setOptionsMissingError, type Api, type AuthUser, type WatchPairResult } from './types';
 
 // URL y anon key son públicas por diseño: la seguridad real la da Row Level Security.
 export const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? 'https://ogqbvooefjojaovxhhcx.supabase.co';
@@ -402,5 +402,24 @@ export const liveApi: Api = {
     });
     if (error) fail(error);
     return ((data ?? []) as Record<string, unknown>[]).map(toLog);
+  },
+
+  // ── Reloj Garmin ─────────────────────────────────────────────────────────
+
+  async listWatchDevices() {
+    const { data, error } = await sb.from('watch_devices').select('id, name, created_at, last_seen_at').order('created_at');
+    if (error) fail(error);
+    return (data ?? []) as WatchDevice[];
+  },
+
+  async confirmWatchPairing(code, name) {
+    const { data, error } = await sb.rpc('watch_pair_confirm', { p_code: code, p_name: name });
+    if (error) fail(error);
+    return data as WatchPairResult;
+  },
+
+  async unlinkWatch(id) {
+    const { error } = await sb.from('watch_devices').delete().eq('id', id);
+    if (error) fail(error);
   },
 };
