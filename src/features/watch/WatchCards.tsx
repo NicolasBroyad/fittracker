@@ -1,7 +1,7 @@
-import { useMemo } from 'react';
-import { Activity, Bike, Dumbbell, Flame, Footprints, PersonStanding, Timer, Watch, Waves } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { Activity, Bike, Dumbbell, Flame, Footprints, PersonStanding, Timer, Trash2, Watch, Waves } from 'lucide-react';
 import { Bar, BarChart, Cell, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
-import { useWatchActivities, useWatchDays } from '@/api/hooks';
+import { useHideWatchActivity, useWatchActivities, useWatchDays } from '@/api/hooks';
 import { useCssColors } from '@/app/theme';
 import { DAY_LETTER } from '@/lib/constants';
 import { addDays, dayOfWeek, fmtRelative } from '@/lib/dates';
@@ -18,6 +18,7 @@ import {
   sportKind,
   sportLabel,
 } from '@/lib/watch';
+import { ConfirmButton } from '@/ui/confirm-button';
 import { Card, CardTitle, ProgressRing, Stat } from '@/ui/display';
 
 // Lo que mide el reloj Garmin. Lo sube la app del reloj cada vez que se abre (no hay sincronización
@@ -180,31 +181,60 @@ const ICON = {
   other: Flame,
 } as const;
 
+/**
+ * Tocar una actividad muestra "Borrar". Hace falta porque Connect IQ no ve Garmin Connect: lo que
+ * se borra en la app de Garmin del celular el reloj lo sigue teniendo y lo vuelve a mandar. Lo que
+ * se borra en el reloj se borra solo al abrir la app del reloj.
+ */
 function ActivityRow({ a, showDate }: { a: WatchActivity; showDate: boolean }) {
+  const [open, setOpen] = useState(false);
+  const hide = useHideWatchActivity();
   const Icon = ICON[sportKind(a.sport)];
   const date = activityDate(a);
   const pace = sportKind(a.sport) === 'run' || sportKind(a.sport) === 'walk' ? fmtPace(a) : null;
   const distance = fmtDistance(a.distance_m);
   return (
-    <div className="flex items-center gap-3">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-ink">
-        <Icon className="size-[18px]" />
-      </span>
-      <div className="min-w-0 flex-1">
-        <div className="truncate text-[15px] font-medium">{sportLabel(a.sport)}</div>
-        <div className="truncate text-[12.5px] text-muted">
-          {showDate ? `${fmtRelative(date)} · ` : ''}
-          {activityTime(a)}
-          {distance && ` · ${distance}`}
+    <div>
+      <button
+        type="button"
+        className="flex w-full items-center gap-3 text-left"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        <span className="flex size-9 shrink-0 items-center justify-center rounded-xl bg-accent-soft text-accent-ink">
+          <Icon className="size-[18px]" />
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="truncate text-[15px] font-medium">{sportLabel(a.sport)}</div>
+          <div className="truncate text-[12.5px] text-muted">
+            {showDate ? `${fmtRelative(date)} · ` : ''}
+            {activityTime(a)}
+            {distance && ` · ${distance}`}
+          </div>
         </div>
-      </div>
-      <div className="shrink-0 text-right">
-        <div className="flex items-center justify-end gap-1 text-[14px] font-semibold tnum">
-          <Timer className="size-3.5 text-muted" />
-          {fmtDuration(a.duration_s)}
+        <div className="shrink-0 text-right">
+          <div className="flex items-center justify-end gap-1 text-[14px] font-semibold tnum">
+            <Timer className="size-3.5 text-muted" />
+            {fmtDuration(a.duration_s)}
+          </div>
+          {pace && <div className="text-[12px] text-muted tnum">{pace}</div>}
         </div>
-        {pace && <div className="text-[12px] text-muted tnum">{pace}</div>}
-      </div>
+      </button>
+      {open && (
+        <div className="mt-2 flex items-center gap-3 pl-12">
+          <p className="min-w-0 flex-1 text-[12.5px] leading-snug text-muted">
+            Se borra solo de FitTracker, no del reloj ni de Garmin Connect.
+          </p>
+          <ConfirmButton
+            size="sm"
+            icon={<Trash2 className="size-4" />}
+            confirmLabel="¿Borrar?"
+            onConfirm={() => hide.mutate(a.start_time)}
+          >
+            Borrar
+          </ConfirmButton>
+        </div>
+      )}
     </div>
   );
 }

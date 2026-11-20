@@ -435,11 +435,54 @@ console.log('\nReloj Garmin');
     A,
     garmin + 7200,
   ]);
-  await db.exec(readFileSync(`${MIG}/20261119020000_watch_activity_epoch.sql`, 'utf8'));
+  // (y las posteriores, que vuelven a definir watch_save_health)
+  for (const f of files.filter((f) => f >= '20261119020000')) await db.exec(readFileSync(`${MIG}/${f}`, 'utf8'));
   const fixed = (await db.query(`select (start_time at time zone 'UTC')::text t from public.watch_activities where sport = 4`))
     .rows;
   ok(fixed.length === 1 && fixed[0].t.startsWith('2025-11-19 02'), 'la migración corrige las actividades viejas');
   await db.query(`delete from public.watch_activities where sport in (4, 10)`);
+
+  // actividades borradas: lo que el reloj ya no manda se borra; lo que se borra en la web no vuelve
+  const a1 = { start: 1761832800, sport: 1, duration_s: 1850, distance_m: 5100 };
+  const a2 = { start: 1761840000, sport: 10, duration_s: 68 };
+  const acts = async () =>
+    (
+      await db.query(
+        `select extract(epoch from start_time)::int s, hidden_at is not null h from public.watch_activities order by 1`,
+      )
+    ).rows;
+  await saveH(secret, [], [a1, a2]);
+  ok((await acts()).length === 2, 'se guardan las dos actividades');
+  await saveH(secret, [], [a1]);
+  ok(JSON.stringify((await acts()).map((r) => r.s)) === JSON.stringify([a1.start]), 'la que el reloj ya no manda se borra');
+  await db.query(`insert into public.watch_activities (user_id, start_time, sport) values ($1, to_timestamp(1761800000), 1)`, [
+    A,
+  ]);
+  await saveH(secret, [], [a1]);
+  ok((await acts()).length === 2, 'las más viejas que la lista del reloj no se borran');
+  await saveH(secret, [], []);
+  ok((await acts()).length === 2, 'una lista vacía no borra nada');
+  await db.query(`delete from public.watch_activities where start_time = to_timestamp(1761800000)`);
+  const hide = (u, col = 'hidden_at = now()') =>
+    as(u, () => db.query(`update public.watch_activities set ${col} where start_time = to_timestamp(${a1.start})`));
+  ok((await hide(B)).affectedRows === 0, 'otro usuario no puede borrar mi actividad');
+  ok((await hide(A)).affectedRows === 1, 'el dueño puede borrar (ocultar) una actividad');
+  await saveH(secret, [], [a1]);
+  ok((await acts())[0].h === true, 'si el reloj la vuelve a mandar sigue borrada');
+  let colDenied = false;
+  try {
+    await hide(A, 'duration_s = 1');
+  } catch {
+    colDenied = true;
+  }
+  let anonDenied = false;
+  try {
+    await asAnon(() => db.query(`update public.watch_activities set hidden_at = now()`));
+  } catch {
+    anonDenied = true;
+  }
+  ok(colDenied && anonDenied, 'desde la web solo se puede cambiar hidden_at, y sin sesión nada');
+  await db.query(`update public.watch_activities set hidden_at = null`);
   ok(
     (await saveH('otro-secreto', [{ date: '2026-10-31', steps: 1 }], [])).err === 'unlinked',
     'token inválido no sube actividad',

@@ -82,6 +82,11 @@ export interface Api {
   listWatchDays(): Promise<WatchDay[]>;
   /** Actividades grabadas en el reloj, de la más nueva a la más vieja ([] si falta la migración). */
   listWatchActivities(): Promise<WatchActivity[]>;
+  /**
+   * Borra una actividad del reloj de FitTracker (queda oculta: si el reloj la vuelve a mandar no
+   * reaparece). Hace falta porque lo que se borra en Garmin Connect el reloj lo sigue teniendo.
+   */
+  hideWatchActivity(startTime: string): Promise<void>;
 }
 
 /** 'invalid' = código mal escrito o vencido; 'too_many' = demasiados intentos en la última hora. */
