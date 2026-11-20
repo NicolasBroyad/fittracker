@@ -17,6 +17,14 @@ export function fmtNum(n: number, decimals = 1): string {
   return formatter(decimals, decimals).format(n);
 }
 
+/** Decimales con los que se muestra el peso corporal (se guarda con 2: numeric(5,2)). */
+export const KG_DECIMALS = 2;
+
+/** Peso corporal (registros, promedios, metas): 78.35 → "78,35"; 78.4 → "78,40". */
+export function fmtKg(n: number): string {
+  return fmtNum(n, KG_DECIMALS);
+}
+
 /** Como fmtNum pero sin ceros de más: 80 → "80", 82.5 → "82,5". */
 export function fmtNumTrim(n: number, maxDecimals = 2): string {
   return formatter(0, maxDecimals).format(n);

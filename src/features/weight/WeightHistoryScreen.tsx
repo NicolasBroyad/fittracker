@@ -3,7 +3,7 @@ import { useEntries } from '@/api/hooks';
 import { Page } from '@/app/Page';
 import { sheets } from '@/app/sheets';
 import { fmtMonth, fmtWeekdayShort, monthKey } from '@/lib/dates';
-import { fmtNum } from '@/lib/format';
+import { fmtKg } from '@/lib/format';
 import type { WeightEntry } from '@/lib/types';
 
 import { Card, Delta } from '@/ui/display';
@@ -42,7 +42,7 @@ export function WeightHistoryScreen() {
                     {e.note && <div className="truncate text-[13px] text-muted">{e.note}</div>}
                   </div>
                   <div className="text-right">
-                    <div className="text-[16px] font-semibold tnum">{fmtNum(e.weight, 1)}</div>
+                    <div className="text-[16px] font-semibold tnum">{fmtKg(e.weight)}</div>
                     <div className="text-[12px]">{prev ? <Delta value={e.weight - prev.weight} /> : null}</div>
                   </div>
                 </button>

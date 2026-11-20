@@ -5,7 +5,7 @@ import { PHASE_META } from '@/lib/constants';
 import { useAddGoal } from '@/api/hooks';
 import { useResetKey } from '@/app/hooks';
 import { addDays, diffDays, fmtDate, todayISO } from '@/lib/dates';
-import { fmtDelta, fmtNum, parseDecimal } from '@/lib/format';
+import { fmtDelta, fmtKg, parseDecimal } from '@/lib/format';
 import type { Phase, WeightEntry, WeightGoal } from '@/lib/types';
 import { avgEndingAt, goalProgress } from '@/lib/weight';
 import { Button } from '@/ui/button';
@@ -67,7 +67,7 @@ export function GoalCard({
             <div>
               <div className="text-[12.5px] text-muted">Meta de peso</div>
               <div className="mt-0.5 font-display text-[30px] leading-none font-semibold tracking-tight tnum">
-                {fmtNum(gp.target, 1)}
+                {fmtKg(gp.target)}
                 <span className="ml-1 text-[16px] text-muted">kg</span>
               </div>
             </div>
@@ -87,9 +87,9 @@ export function GoalCard({
 
           <ProgressBar value={gp.pct} className="mt-3.5 h-2.5" />
           <div className="mt-2 flex justify-between text-[12.5px] text-muted tnum">
-            <span>Inicio {fmtNum(gp.start, 1)}</span>
+            <span>Inicio {fmtKg(gp.start)}</span>
             <span className="font-semibold text-fg">{Math.round(gp.pct)}%</span>
-            <span>Actual {fmtNum(gp.current, 1)}</span>
+            <span>Actual {fmtKg(gp.current)}</span>
           </div>
           <p className="mt-1 text-[12px] text-faint">
             {gp.phase
@@ -105,7 +105,7 @@ export function GoalCard({
             ) : (
               <>
                 <Insight icon={<Flag className="size-4" />}>
-                  Faltan <b className="text-fg">{fmtNum(Math.abs(gp.target - gp.current), 1)} kg</b>
+                  Faltan <b className="text-fg">{fmtKg(Math.abs(gp.target - gp.current))} kg</b>
                   {gp.requiredPerWeek != null && (
                     <>
                       {' '}
@@ -210,7 +210,7 @@ function GoalForm({
 }) {
   const add = useAddGoal();
   const today = todayISO();
-  const [weight, setWeight] = useState(goal?.target_weight != null ? fmtNum(goal.target_weight, 1) : '');
+  const [weight, setWeight] = useState(goal?.target_weight != null ? fmtKg(goal.target_weight) : '');
   const [date, setDate] = useState<string | null>(goal?.target_date ?? null);
   const [error, setError] = useState<string | null>(null);
 
@@ -257,8 +257,8 @@ function GoalForm({
 
         {current != null && target != null && (
           <div className="rounded-2xl bg-surface-2 px-4 py-3 text-[13.5px] leading-snug text-muted">
-            Desde tu promedio actual (<b className="text-fg tnum">{fmtNum(current, 1)} kg</b>) son{' '}
-            <b className="text-fg tnum">{fmtDelta(target - current, 1)} kg</b>
+            Desde tu promedio actual (<b className="text-fg tnum">{fmtKg(current)} kg</b>) son{' '}
+            <b className="text-fg tnum">{fmtDelta(target - current, 2)} kg</b>
             {perWeek != null && (
               <>
                 {' '}
@@ -281,7 +281,7 @@ function GoalForm({
                 <li key={g.id} className="flex justify-between gap-3 tnum">
                   <span className="text-muted">{fmtDate(g.created_at.slice(0, 10))}</span>
                   <span>
-                    {g.target_weight == null ? 'Sin meta' : `${fmtNum(g.target_weight, 1)} kg`}
+                    {g.target_weight == null ? 'Sin meta' : `${fmtKg(g.target_weight)} kg`}
                     {g.target_date && <span className="text-muted"> · {fmtDate(g.target_date)}</span>}
                   </span>
                 </li>

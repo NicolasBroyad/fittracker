@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { sheets } from '@/app/sheets';
 import { DAY_LETTER } from '@/lib/constants';
 import { addDays, addMonths, daysInMonth, firstOfMonth, fmtMonth, fromISO, mondayOf, todayISO } from '@/lib/dates';
-import { fmtNum } from '@/lib/format';
+import { fmtKg } from '@/lib/format';
 import type { WeightEntry } from '@/lib/types';
 import { cn } from '@/ui/cn';
 import { Delta } from '@/ui/display';
@@ -121,7 +121,7 @@ export function WeightCalendar({ entries }: { entries: WeightEntry[] }) {
                     {fromISO(d).getDate()}
                   </span>
                   <span className={cn('mt-1 text-[12.5px] leading-none font-semibold tnum', !e && 'text-transparent')}>
-                    {e ? fmtNum(e.weight, 1) : '·'}
+                    {e ? fmtKg(e.weight) : '·'}
                   </span>
                   {e?.note && <span className="absolute top-1.5 right-1.5 size-1 rounded-full bg-accent-ink" />}
                 </button>
@@ -135,7 +135,7 @@ export function WeightCalendar({ entries }: { entries: WeightEntry[] }) {
               )}
             >
               <span className="text-[13px] leading-none font-bold text-accent-ink tnum">
-                {w.avg != null ? fmtNum(w.avg, 1) : w.monday <= today ? '–' : ''}
+                {w.avg != null ? fmtKg(w.avg) : w.monday <= today ? '–' : ''}
               </span>
               {w.avg != null && prev != null && <Delta value={w.avg - prev} className="mt-1 text-[10px]" />}
             </div>,
@@ -144,13 +144,13 @@ export function WeightCalendar({ entries }: { entries: WeightEntry[] }) {
       </motion.div>
 
       <div className="mt-4 grid grid-cols-3 gap-2 rounded-2xl bg-surface-2 p-3 text-center">
-        <MiniStat label="Promedio" value={summary ? fmtNum(summary.avg, 1) : '–'} />
+        <MiniStat label="Promedio" value={summary ? fmtKg(summary.avg) : '–'} />
         <MiniStat label="Cambio" value={summary?.change != null ? <Delta value={summary.change} /> : '–'} />
         <MiniStat label="Registros" value={summary ? `${summary.count}/${summary.elapsed}` : '–'} />
       </div>
       {summary && (
         <div className="mt-2 text-center text-[12px] text-muted tnum">
-          Mín. {fmtNum(summary.min, 1)} · Máx. {fmtNum(summary.max, 1)} kg
+          Mín. {fmtKg(summary.min)} · Máx. {fmtKg(summary.max)} kg
         </div>
       )}
     </div>

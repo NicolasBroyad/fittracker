@@ -71,11 +71,12 @@ export function PhaseBadge({ phase, className }: { phase: PhaseKind; className?:
 
 /**
  * Variación con flecha: verde si sube, rojo si baja. `neutral` la muestra en gris (ej. conteos).
+ * Por defecto con 2 decimales, como el peso corporal (para conteos se pasa `decimals={0}`).
  */
 export function Delta({
   value,
   unit = '',
-  decimals = 1,
+  decimals = 2,
   neutral = false,
   className,
 }: {

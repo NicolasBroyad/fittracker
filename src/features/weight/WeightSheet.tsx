@@ -6,7 +6,7 @@ import { useDeleteWeight, useEntries, useSaveWeight } from '@/api/hooks';
 import { useSticky } from '@/app/hooks';
 import { sheets, useSheets } from '@/app/sheets';
 import { fmtLong, fmtRelative, todayISO } from '@/lib/dates';
-import { fmtNum, parseDecimal } from '@/lib/format';
+import { fmtKg, parseDecimal } from '@/lib/format';
 import type { ISODate, WeightEntry } from '@/lib/types';
 import { Button } from '@/ui/button';
 import { ConfirmButton } from '@/ui/confirm-button';
@@ -37,7 +37,7 @@ function initialFor(date: ISODate, entries: WeightEntry[]) {
   return {
     existing,
     ref,
-    weight: existing ? fmtNum(existing.weight, 1) : ref ? fmtNum(ref.weight, 1) : '',
+    weight: existing ? fmtKg(existing.weight) : ref ? fmtKg(ref.weight) : '',
     note: existing?.note ?? '',
   };
 }
@@ -93,7 +93,7 @@ function WeightForm({ initialDate }: { initialDate: ISODate }) {
   const step = (delta: number) =>
     setValue((v) => {
       const n = parseDecimal(v) ?? ref?.weight ?? 70;
-      return fmtNum(Math.max(0, Math.round((n + delta) * 10) / 10), 1);
+      return fmtKg(Math.max(0, Math.round((n + delta) * 100) / 100));
     });
   const minus = useHoldRepeat(() => step(-0.1));
   const plus = useHoldRepeat(() => step(0.1));
@@ -106,7 +106,7 @@ function WeightForm({ initialDate }: { initialDate: ISODate }) {
     save.mutate({ date, weight: Math.round(parsed * 100) / 100, note: note.trim(), previous: existing });
     sheets.closeWeight();
     toast.success(existing ? 'Registro actualizado' : 'Peso registrado', {
-      description: offlineNote() ?? `${fmtNum(parsed, 1)} kg · ${fmtLong(date)}`,
+      description: offlineNote() ?? `${fmtKg(parsed)} kg · ${fmtLong(date)}`,
     });
   }
 
@@ -153,7 +153,7 @@ function WeightForm({ initialDate }: { initialDate: ISODate }) {
           <div className="mt-3 h-5 text-center text-[13.5px] text-muted">
             {ref && parsed != null ? (
               <>
-                <Delta value={parsed - ref.weight} unit="kg" /> vs {fmtRelative(ref.date)} ({fmtNum(ref.weight, 1)})
+                <Delta value={parsed - ref.weight} unit="kg" /> vs {fmtRelative(ref.date)} ({fmtKg(ref.weight)})
               </>
             ) : existing ? (
               'Editando un registro existente'
