@@ -38,6 +38,7 @@ import type { Exercise } from '@/lib/types';
 import { IconButton } from '@/ui/button';
 import { cn } from '@/ui/cn';
 import { Card, CardTitle, Delta, Empty, Skeleton, Sparkline, Stat } from '@/ui/display';
+import { WatchActivitiesCard, WatchStepsCard } from '../watch/WatchCards';
 
 export function ProgressScreen() {
   const logsQuery = useLogsQuery();
@@ -85,6 +86,8 @@ export function ProgressScreen() {
         <WeeklySetsCard index={index} exById={exById} today={today} />
         <PRsCard index={index} exById={exById} />
         <TopExercisesCard index={index} exById={exById} today={today} />
+        <WatchStepsCard today={today} />
+        <WatchActivitiesCard />
       </div>
     </Page>
   );

@@ -12,6 +12,8 @@ import type {
   Routine,
   RoutineData,
   SetLog,
+  WatchActivity,
+  WatchDay,
   WatchDevice,
   WeightEntry,
   WeightGoal,
@@ -40,6 +42,8 @@ interface Store {
   days: PlanDay[];
   items: PlanItem[];
   logs: SetLog[];
+  watchDays: WatchDay[];
+  watchActivities: WatchActivity[];
 }
 
 function seed(): Store {
@@ -227,7 +231,43 @@ function seed(): Store {
     }
   }
 
-  return { entries, goals, phases, exercises, routines: [ppl, fb], days, items, logs };
+  // ── reloj: pasos y calorías de las últimas 3 semanas y algunas actividades de cardio ──
+  const watchDays: WatchDay[] = [];
+  const watchActivities: WatchActivity[] = [];
+  for (let i = 20; i >= 0; i--) {
+    const date = addDays(today, -i);
+    const steps = i === 0 ? 4300 : Math.round(5500 + r() * 7000);
+    watchDays.push({
+      date,
+      steps,
+      step_goal: 8000,
+      calories: Math.round(1750 + steps * 0.045 + r() * 200),
+      distance_m: Math.round(steps * 0.75),
+      active_minutes: Math.round(steps / 220),
+      resting_hr: i === 0 ? 54 : null,
+      updated_at: new Date(date + 'T' + (i === 0 ? '09:12' : '22:30') + ':00').toISOString(),
+    });
+    const dow = dayOfWeek(date);
+    if (dow === 2 || dow === 6) {
+      const km = 5 + Math.round(r() * 30) / 10;
+      watchActivities.push({
+        start_time: new Date(date + 'T07:10:00').toISOString(),
+        sport: 1,
+        duration_s: Math.round(km * 330),
+        distance_m: Math.round(km * 1000),
+      });
+    } else if (dow === 7) {
+      watchActivities.push({
+        start_time: new Date(date + 'T18:30:00').toISOString(),
+        sport: 11,
+        duration_s: 2700 + Math.round(r() * 1200),
+        distance_m: 3500 + Math.round(r() * 1500),
+      });
+    }
+  }
+  watchActivities.reverse();
+
+  return { entries, goals, phases, exercises, routines: [ppl, fb], days, items, logs, watchDays, watchActivities };
 }
 
 const wait = <T>(v: T, ms = 120) => new Promise<T>((res) => setTimeout(() => res(structuredClone(v)), ms));
@@ -392,5 +432,7 @@ function createDemoApiInner(): Api {
       watches = watches.filter((w) => w.id !== id);
       await wait(null);
     },
+    listWatchDays: () => wait(db.watchDays),
+    listWatchActivities: () => wait(db.watchActivities),
   };
 }

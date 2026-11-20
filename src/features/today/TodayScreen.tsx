@@ -23,6 +23,7 @@ import { Button, IconButton } from '@/ui/button';
 import { cn } from '@/ui/cn';
 import { Card, Delta, MuscleBadge, PhaseBadge, ProgressBar, ProgressRing, Sparkline } from '@/ui/display';
 import { MigrationNotice, SlotNumber, useRoutineData } from '../training/common';
+import { WatchTodayCard } from '../watch/WatchCards';
 
 export function TodayScreen() {
   const today = todayISO();
@@ -39,6 +40,7 @@ export function TodayScreen() {
       <div className="space-y-4">
         <WeightTodayCard today={today} />
         <WorkoutTodayCard today={today} />
+        <WatchTodayCard today={today} />
         <div className="grid grid-cols-2 gap-3">
           <WeeklyWeightTile />
           <TrainingWeekTile today={today} />

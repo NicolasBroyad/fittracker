@@ -11,6 +11,8 @@ import type {
   RoutineData,
   SetInput,
   SetLog,
+  WatchActivity,
+  WatchDay,
   WatchDevice,
   WeightEntry,
   WeightGoal,
@@ -76,6 +78,10 @@ export interface Api {
   /** Vincula el reloj que muestra ese código de 6 dígitos. */
   confirmWatchPairing(code: string, name: string): Promise<WatchPairResult>;
   unlinkWatch(id: string): Promise<void>;
+  /** Pasos, calorías, etc. por día que subió el reloj ([] si falta la migración). */
+  listWatchDays(): Promise<WatchDay[]>;
+  /** Actividades grabadas en el reloj, de la más nueva a la más vieja ([] si falta la migración). */
+  listWatchActivities(): Promise<WatchActivity[]>;
 }
 
 /** 'invalid' = código mal escrito o vencido; 'too_many' = demasiados intentos en la última hora. */
