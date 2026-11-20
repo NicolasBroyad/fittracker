@@ -458,6 +458,7 @@ export const liveApi: Api = {
         sb
           .from('watch_activities')
           .select('start_time, sport, duration_s, distance_m')
+          .is('hidden_at', null)
           .order('start_time', { ascending: false })
           .range(from, to),
       );
@@ -466,5 +467,13 @@ export const liveApi: Api = {
       if (e instanceof BackendError && e.missingSchema) return [];
       throw e;
     }
+  },
+
+  async hideWatchActivity(startTime) {
+    const { error } = await sb
+      .from('watch_activities')
+      .update({ hidden_at: new Date().toISOString() })
+      .eq('start_time', startTime);
+    if (error) fail(error);
   },
 };

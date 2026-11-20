@@ -434,5 +434,9 @@ function createDemoApiInner(): Api {
     },
     listWatchDays: () => wait(db.watchDays),
     listWatchActivities: () => wait(db.watchActivities),
+    async hideWatchActivity(startTime) {
+      db.watchActivities = db.watchActivities.filter((a) => a.start_time !== startTime);
+      await wait(null);
+    },
   };
 }

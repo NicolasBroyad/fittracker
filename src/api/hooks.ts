@@ -521,3 +521,21 @@ export function useWatchDays(): WatchDay[] {
 export function useWatchActivities(): WatchActivity[] {
   return useQuery({ queryKey: qk.watchActivities, queryFn: () => api().listWatchActivities() }).data ?? EMPTY;
 }
+
+/** Borra (oculta) una actividad del reloj en FitTracker; no la borra del reloj ni de Garmin Connect. */
+export function useHideWatchActivity() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (startTime: string) => api().hideWatchActivity(startTime),
+    onMutate: async (startTime) => {
+      await qc.cancelQueries({ queryKey: qk.watchActivities });
+      const prev = qc.getQueryData<WatchActivity[]>(qk.watchActivities);
+      qc.setQueryData<WatchActivity[]>(qk.watchActivities, (old = []) => old.filter((a) => a.start_time !== startTime));
+      return { prev };
+    },
+    onError: (e, _v, ctx) => {
+      if (ctx?.prev) qc.setQueryData(qk.watchActivities, ctx.prev);
+      watchError(e);
+    },
+  });
+}
